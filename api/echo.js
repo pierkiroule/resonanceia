@@ -463,3 +463,6 @@ if (require.main === module) {
 }
 
 module.exports = handler;
+module.exports.config = {
+  runtime: 'nodejs18.x'
+};
