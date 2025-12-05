@@ -1,0 +1,163 @@
+{
+  "neutral": {
+    "metaphors": [
+      "comme une onde qui se propage",
+      "tel un miroir qui reflète l'essence",
+      "semblable à une graine qui germe",
+      "comme un écho qui se multiplie",
+      "tel un réseau de connexions",
+      "semblable à une symphonie en construction",
+      "comme une lumière qui illumine",
+      "tel un pont entre les mondes",
+      "semblable à un cristal qui se forme",
+      "comme un voyage intérieur",
+      "tel un cœur qui pulse",
+      "semblable à une spirale infinie"
+    ],
+    "openQuestions": [
+      "Que porte ce mot pour vous?",
+      "Où ce concept vous mène-t-il?",
+      "Quelle résonnance cela crée-t-il en vous?",
+      "Comment ce sens se déploie-t-il?",
+      "Quel écho cherchez-vous à entendre?",
+      "Qu'est-ce que cela signifie vraiment pour vous?",
+      "Où réside la vérité de ce que vous dites?",
+      "Comment ces mots se nouent-ils ensemble?",
+      "Quel chemin suit cette pensée?",
+      "Qu'y a-t-il au cœur de votre intention?",
+      "Comment ce message vous transforme-t-il?",
+      "Quel sens latent attendait d'être découvert?"
+    ],
+    "sentenceStructures": [
+      "Le cœur de votre message: {pivot}. Cela résonne avec: {cowords}.",
+      "{pivot}... ce mot porte votre intention. Autour: {cowords}.",
+      "Vous avez dit {pivot}. L'écho reflète: {cowords}.",
+      "Votre parole centrale: {pivot}. Elle vibre entre: {cowords}.",
+      "Au fondement de vos mots: {pivot}. Ils dialoguent avec: {cowords}.",
+      "{pivot} émerge. Accompagné de: {cowords}.",
+      "Essence identifiée: {pivot}. Ses résonances: {cowords}.",
+      "Le noyau: {pivot}. La danse autour: {cowords}."
+    ]
+  },
+  "hypno": {
+    "metaphors": [
+      "comme une spirale qui t'enroule doucement",
+      "tel un voile de brume qui se dissout",
+      "semblable à l'eau qui coule sans fin",
+      "comme un souffle profond et continu",
+      "tel un pendule qui oscille dans l'oubli",
+      "semblable à une vague qui t'emporte",
+      "comme un cristal qui se dissout lentement",
+      "tel un chemin qui disparaît dans la pénombre",
+      "semblable à un rêve qui s'éternise",
+      "comme une musique lancinante",
+      "tel un cœur qui ralentit",
+      "semblable à une descente sans fin"
+    ],
+    "openQuestions": [
+      "Que repose en toi maintenant?",
+      "Où dors cette pensée?",
+      "Veux-tu explorer plus profondément?",
+      "Comment se détend ton esprit?",
+      "Quel apaisement cherches-tu?",
+      "Où descend ta conscience?",
+      "Peux-tu lâcher prise sur ce mot?",
+      "Comment ce murmure t'enveloppe-t-il?",
+      "Quel rêve prend forme?",
+      "Où va ton attention maintenant?",
+      "Comment te laisses-tu porter?",
+      "Quel calme émane de cela?"
+    ],
+    "sentenceStructures": [
+      "Laisse {pivot} devenir léger... {cowords} s'estompent doucement.",
+      "{pivot}... respire avec ce mot... {cowords} flottent...",
+      "L'essence est {pivot}... glisse vers {cowords}...",
+      "Ferme les yeux sur {pivot}... {cowords} s'évanouissent...",
+      "Le secret: {pivot}... porteur de {cowords}... en silence...",
+      "Descends vers {pivot}... trouvant {cowords}... dans l'ombre...",
+      "{pivot} t'appelle... {cowords} résonnent au loin...",
+      "Détends-toi: {pivot}... entouré de {cowords}... en paix..."
+    ]
+  },
+  "ado": {
+    "metaphors": [
+      "style un truc de fou qui buzz",
+      "genre une bombe qui explose",
+      "c'est grave comme une déflagration",
+      "c'est dingue comme une tornade",
+      "ça clash trop fort avec les autres",
+      "style une grosse vague qui débarque",
+      "c'est chaud comme du feu liquide",
+      "grave une créature sauvage",
+      "c'est ouf comme un chaos organisé",
+      "genre trop puissant pour exister",
+      "c'est sick comme du poison vivant",
+      "style un tremblement de terre psychique"
+    ],
+    "openQuestions": [
+      "T'as vraiment senti ce truc?",
+      "C'est fou pas?",
+      "T'en penses quoi franchement?",
+      "Ça t'a choc ou quoi?",
+      "Pourquoi ça te parle autant?",
+      "T'as compris ou c'est trop hard?",
+      "Ça te rend dingue pas?",
+      "C'est ce que tu cherchais?",
+      "T'as vu comment ça clash?",
+      "Pourquoi c'est comme ça?",
+      "Ça te change du quotidien hein?",
+      "T'es ouf de ça ou pas?"
+    ],
+    "sentenceStructures": [
+      "Yo {pivot} c'est DEL! Avec {cowords} c'est trop.",
+      "{pivot} boom! Attaché à {cowords} trop fort.",
+      "Ce truc {pivot}... c'est fou avec {cowords}...",
+      "Grave {pivot} c'est énorme, {cowords} partout.",
+      "{pivot} clash trop hard avec {cowords}.",
+      "Le core: {pivot}. Autour: {cowords} qui tue.",
+      "Incroyable {pivot}! Mélangé avec {cowords} c'est ouf.",
+      "{pivot} pète avec {cowords}! Trop hype!"
+    ]
+  },
+  "etp": {
+    "metaphors": [
+      "comme une graine qui grandit dans le jardin du cœur",
+      "tel un enfant qui apprend à marcher",
+      "semblable à un papillon qui sort de son cocon",
+      "comme une fleur qui s'ouvre au soleil",
+      "tel un arbre qui développe ses racines",
+      "semblable à une histoire qui se compose page à page",
+      "comme un jeu où on apprend ensemble",
+      "tel un pont de couleurs arc-en-ciel",
+      "semblable à un trésor qu'on découvre pas à pas",
+      "comme un ami fidèle qui t'accompagne",
+      "tel un chemin illuminé et sécuritaire",
+      "semblable à un rêve positif qui devient réalité"
+    ],
+    "openQuestions": [
+      "Qu'as-tu appris de ce mot?",
+      "Comment ce mot t'aide-t-il à grandir?",
+      "Que ressentais-tu en le disant?",
+      "Quel trésor ce mot cache-t-il?",
+      "Comment partagerais-tu cela avec d'autres?",
+      "Qu'aimes-tu le plus dans ce mot?",
+      "Comment ce mot te rend-il plus fort?",
+      "Quel ami reconnaissais-tu dans ce mot?",
+      "Comment ce mot illumine-t-il ta journée?",
+      "Qu'aimais-tu faire avec ce concept?",
+      "Comment ce mot te donne-t-il de l'espoir?",
+      "Quel cadeau ce mot t'a-t-il offert?"
+    ],
+    "sentenceStructures": [
+      "Le cœur: {pivot}. Et autour: {cowords} qui grandissent.",
+      "{pivot}... c'est joli avec {cowords}... ensemble.",
+      "Tu as dit {pivot}. Bravo! {cowords} te soutiennent.",
+      "Super {pivot}! {cowords} t'accompagnent.",
+      "Le merveilleux {pivot}. Entouré de {cowords} aimants.",
+      "Excellent {pivot}! {cowords} dansent autour.",
+      "{pivot} brille. {cowords} brillent aussi. Magnifique!",
+      "Ton {{pivot}} est une fleur. {{cowords}} fleurissent près!"
+    ]
+  }
+}
+

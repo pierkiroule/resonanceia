@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/echo.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/echo",
+      "dest": "/api/echo.js",
+      "methods": ["POST", "OPTIONS"]
+    }
+  ],
+  "functions": {
+    "api/echo.js": {
+      "memory": 128,
+      "maxDuration": 10
+    }
+  }
+}
