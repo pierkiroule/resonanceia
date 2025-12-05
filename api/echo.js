@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const VALID_MODES = ['neutral', 'hypno', 'ado', 'etp'];
 
 // Charger les patterns
 let PATTERNS = {};
@@ -248,35 +249,49 @@ function separateByFrequency(frequencies) {
  */
 function generateEcho(pivot, noyau, peripherie, mode = 'neutral') {
   // Valide le mode
-  const validModes = ['neutral', 'hypno', 'ado', 'etp'];
-  if (!validModes.includes(mode)) {
+  if (!VALID_MODES.includes(mode)) {
     mode = 'neutral';
   }
   
-  const modePatterns = PATTERNS[mode] || PATTERNS.neutral;
-  
+  const neutralPatterns = PATTERNS.neutral || {};
+  const modePatterns = PATTERNS[mode] || neutralPatterns;
+
+  const metaphors = modePatterns.metaphors?.length ? modePatterns.metaphors : neutralPatterns.metaphors || ['comme une onde qui se propage'];
+  const openQuestions = modePatterns.openQuestions?.length ? modePatterns.openQuestions : neutralPatterns.openQuestions || ['Que signifie cela pour vous?'];
+  const sentenceStructures = modePatterns.sentenceStructures?.length ? modePatterns.sentenceStructures : neutralPatterns.sentenceStructures || ['Le cœur: {pivot}. Résonnances: {cowords}.'];
+
   // Sélectionne structure aléatoire contrôlée
-  const structureIndex = Math.floor(Math.random() * modePatterns.sentenceStructures.length);
-  const structure = modePatterns.sentenceStructures[structureIndex];
-  
+  const structureIndex = Math.floor(Math.random() * sentenceStructures.length);
+  const structure = sentenceStructures[structureIndex];
+
   // Sélectionne métaphore aléatoire
-  const metaphorIndex = Math.floor(Math.random() * modePatterns.metaphors.length);
-  const metaphor = modePatterns.metaphors[metaphorIndex];
-  
+  const metaphorIndex = Math.floor(Math.random() * metaphors.length);
+  const metaphor = metaphors[metaphorIndex];
+
   // Sélectionne question aléatoire
-  const questionIndex = Math.floor(Math.random() * modePatterns.openQuestions.length);
-  const question = modePatterns.openQuestions[questionIndex];
+  const questionIndex = Math.floor(Math.random() * openQuestions.length);
+  const question = openQuestions[questionIndex];
   
   // Prépare co-words (les 2-3 premiers du noyau)
   const cowords = noyau.slice(0, 3).join(', ') || peripherie[0] || 'essence';
-  
+  const noyauText = noyau.length ? noyau.join(', ') : pivot;
+  const peripherieText = peripherie.length ? peripherie.join(', ') : cowords;
+
   // Génère l'écho en remplaçant les placeholders
   const echo = structure
     .replace(/{pivot}/g, pivot)
     .replace(/{{pivot}}/g, pivot)
     .replace(/{cowords}/g, cowords)
-    .replace(/{{cowords}}/g, cowords);
-  
+    .replace(/{{cowords}}/g, cowords)
+    .replace(/{noyau}/g, noyauText)
+    .replace(/{{noyau}}/g, noyauText)
+    .replace(/{peripherie}/g, peripherieText)
+    .replace(/{{peripherie}}/g, peripherieText)
+    .replace(/{meta}/g, metaphor)
+    .replace(/{{meta}}/g, metaphor)
+    .replace(/{question}/g, question)
+    .replace(/{{question}}/g, question);
+
   return {
     echo,
     metaphor,
@@ -290,23 +305,74 @@ function generateEcho(pivot, noyau, peripherie, mode = 'neutral') {
  */
 function handleEchoRequest(req, res) {
   let body = '';
-  
+
   req.on('data', chunk => {
     body += chunk.toString();
   });
-  
+
   req.on('end', () => {
+    const sendError = (status, message) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: message }));
+    };
+
+    const validatePayload = payload => {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return 'Invalid JSON body';
+      }
+
+      const allowedKeys = ['message', 'mode', 'disableMemory'];
+      const extraKeys = Object.keys(payload).filter(key => !allowedKeys.includes(key));
+      if (extraKeys.length > 0) {
+        return `Unexpected field(s): ${extraKeys.join(', ')}`;
+      }
+
+      if (typeof payload.message !== 'string') {
+        return 'message is required and must be a string';
+      }
+
+      const trimmed = payload.message.trim();
+      if (trimmed.length < 3 || trimmed.length > 2000) {
+        return 'message must be between 3 and 2000 characters';
+      }
+
+      if (payload.mode !== undefined && !VALID_MODES.includes(payload.mode)) {
+        return 'mode is invalid';
+      }
+
+      if (payload.disableMemory !== undefined && typeof payload.disableMemory !== 'boolean') {
+        return 'disableMemory must be a boolean';
+      }
+
+      return null;
+    };
+
+    let payload;
     try {
-      const { message, mode, disableMemory } = JSON.parse(body);
-      
-      if (!message || typeof message !== 'string') {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'message is required and must be a string' }));
+      payload = body ? JSON.parse(body) : {};
+    } catch (error) {
+      sendError(400, 'Invalid JSON body');
+      return;
+    }
+
+    const validationError = validatePayload(payload);
+    if (validationError) {
+      sendError(400, validationError);
+      return;
+    }
+
+    const sanitizedMessage = payload.message.trim();
+    const { mode, disableMemory = false } = payload;
+
+    try {
+      // Analyse
+      const tokens = tokenize(sanitizedMessage);
+
+      if (tokens.length === 0) {
+        sendError(400, 'message must contain at least one meaningful word');
         return;
       }
-      
-      // Analyse
-      const tokens = tokenize(message);
+
       const frequencies = computeFrequencies(tokens);
       const cowordData = coWordAnalysis(tokens);
       const pivot = findPivot(frequencies, cowordData);
