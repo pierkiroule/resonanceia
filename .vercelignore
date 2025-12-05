@@ -1,0 +1,8 @@
+# Fichiers ignorés lors du déploiement Vercel
+node_modules
+npm-debug.log*
+.DS_Store
+.vercel
+coverage
+.git
+.vscode
