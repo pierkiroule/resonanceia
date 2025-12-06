@@ -56,11 +56,10 @@
 
   <section class="panel" aria-label="Modèle Nebius">
     <h3>Modèle Nebius</h3>
-    <pre>
-POST https://api.tokenfactory.nebius.com/v1/chat/completions
-model: Qwen/Qwen3-32B
-role: system -> psychologue clinicien bienveillant
-    </pre>
+    <p class="small" id="nebiusStatus">Nebius non activé — mode développement MOCK</p>
+    <pre id="nebiusOutput">Réponse simulée en attente...</pre>
+    <p class="small">POST https://api.tokenfactory.nebius.com/v1/chat/completions</p>
+    <p class="small">model: Qwen/Qwen3-32B · role: system → psychologue clinicien bienveillant</p>
   </section>
 
   <script src="./script.js"></script>

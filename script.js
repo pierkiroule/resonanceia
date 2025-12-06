@@ -10,9 +10,12 @@ const maxTokensInput = document.getElementById('max_tokens');
 const wordCloudEl = document.getElementById('wordCloud');
 const metaphorBadge = document.getElementById('metaphorBadge');
 const dataModeEl = document.getElementById('dataMode');
+const nebiusStatusEl = document.getElementById('nebiusStatus');
+const nebiusOutputEl = document.getElementById('nebiusOutput');
 
 // --- MOCK API REPLACEMENT FOR DEV --- //
 const USE_MOCK = true;
+const ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est configurée
 
 let mockMemory = {}; // {mot: count}
 
@@ -73,6 +76,37 @@ function setStatus(text) {
   statusEl.textContent = text;
 }
 
+function displayNebiusStatus(text) {
+  if (nebiusStatusEl) {
+    nebiusStatusEl.textContent = text;
+  }
+}
+
+function displayNebiusOutput(response) {
+  if (!nebiusOutputEl) return;
+  if (!response) {
+    nebiusOutputEl.textContent = '—';
+    return;
+  }
+
+  if (response.mock) {
+    nebiusOutputEl.textContent = 'Réponse simulée';
+    return;
+  }
+
+  if (typeof response.response === 'string') {
+    nebiusOutputEl.textContent = response.response;
+    return;
+  }
+
+  if (typeof response.reply === 'string') {
+    nebiusOutputEl.textContent = response.reply;
+    return;
+  }
+
+  nebiusOutputEl.textContent = 'Réponse reçue.';
+}
+
 function setDataMode() {
   if (!dataModeEl) return;
   dataModeEl.textContent = `Mode API: ${USE_MOCK ? 'MOCK local (mockMemory)' : 'Requête /api/echo'}`;
@@ -83,6 +117,8 @@ function resetConversation() {
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
   setStatus('Prêt à dialoguer (modèle Qwen/Qwen3-32B).');
+  displayNebiusStatus('Nebius non activé — mode développement MOCK');
+  displayNebiusOutput({ mock: true });
   resetWordCloud();
   if (USE_MOCK) {
     mockMemory = {};
@@ -181,6 +217,54 @@ function formatCooccurrences(coocc) {
     : entries.map(([pair, count]) => `${pair}: ${count}`).join(', ');
 }
 
+function friendlyNebiusError(error) {
+  const message = error?.message || 'Nebius indisponible';
+
+  if (!ENABLE_NEBIUS) {
+    return 'Nebius non activé — mode développement MOCK';
+  }
+
+  if (/NEBIUS_API_KEY/i.test(message)) {
+    return 'Nebius non activé — clé API absente';
+  }
+
+  return message;
+}
+
+async function callNebiusChat(payload) {
+  if (!ENABLE_NEBIUS) {
+    return { reply: '(simulation Nebius)', model: 'Nebius (mock local)', mock: true };
+  }
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text();
+  if (!res.ok) {
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.error) {
+        message = parsed.error;
+      }
+    } catch (_) {
+      // ignore JSON parse issues for error bodies
+    }
+    throw new Error(message || 'Réponse invalide');
+  }
+
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (parseError) {
+    throw new Error('Réponse Nebius illisible');
+  }
+  return { ...data, mock: false };
+}
+
 async function callResonanceAPI(message) {
   if (USE_MOCK) {
     return Promise.resolve(mock(message));
@@ -217,7 +301,7 @@ async function sendMessage() {
   conversation.push({ role: 'user', content });
   renderHistory();
   messageInput.value = '';
-  setStatus('⏳ Envoi au modèle Nebius...');
+  setStatus(ENABLE_NEBIUS ? '⏳ Envoi au modèle Nebius...' : '⏳ Réponse simulée (Nebius désactivé)...');
   sendBtn.disabled = true;
 
   const payload = {
@@ -228,25 +312,23 @@ async function sendMessage() {
   };
 
   try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || 'Réponse invalide');
-    }
-
-    const data = await res.json();
-    const reply = data.reply || '(pas de contenu)';
+    const data = await callNebiusChat(payload);
+    const reply = data.reply || data.response || '(pas de contenu)';
     conversation.push({ role: 'assistant', content: reply });
     renderHistory();
-    setStatus(`✅ Réponse du modèle ${data.model || 'Qwen/Qwen3-32B'} (messages envoyés: ${data.messagesSent || 'n/a'})`);
+
+    const statusText = data.mock
+      ? '✅ Réponse simulée (Nebius désactivé).'
+      : `✅ Réponse du modèle ${data.model || 'Qwen/Qwen3-32B'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
+    setStatus(statusText);
+    displayNebiusStatus(data.mock ? 'Nebius non activé — mode développement MOCK' : 'Nebius activé — clé API présente');
+    displayNebiusOutput(data);
     updateEcho(content);
   } catch (error) {
-    setStatus('❌ ' + error.message);
+    const friendly = friendlyNebiusError(error);
+    setStatus('❌ ' + friendly);
+    displayNebiusStatus(friendly);
+    displayNebiusOutput({ mock: true });
   } finally {
     sendBtn.disabled = false;
   }
@@ -263,4 +345,6 @@ messageInput.addEventListener('keydown', (e) => {
 setPlaceholderVisibility();
 renderHistory();
 setDataMode();
+displayNebiusStatus(ENABLE_NEBIUS ? 'Nebius activé — clé API attendue' : 'Nebius non activé — mode développement MOCK');
+displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
 setInterval(cleanupWords, 2000);
