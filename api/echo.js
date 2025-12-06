@@ -411,6 +411,10 @@ function handleEchoRequest(req, res) {
       
       // Prépare les liens (top pairs seulement)
       const topLinks = Object.entries(cowordData.pairs)
+        .filter(([pair]) => {
+          const nodes = pair.split('-');
+          return nodes.includes(pivot);
+        })
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
         .reduce((acc, [pair, score]) => {
