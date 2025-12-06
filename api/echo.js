@@ -118,7 +118,10 @@ class StructuralMemory {
   
   getMemoryContext(pivot) {
     const topLinks = Object.entries(this.data.liens)
-      .filter(([pair]) => pair.includes(pivot))
+      .filter(([pair]) => {
+        const nodes = pair.split('-');
+        return nodes.includes(pivot);
+      })
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
     
