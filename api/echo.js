@@ -57,6 +57,34 @@ function serveFrontend(res) {
   }
 }
 
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+};
+
+function serveStatic(res, pathname) {
+  const safeRoot = path.join(__dirname, '..');
+  const sanitizedPath = pathname.replace(/^\/+/, '') || 'index.html';
+  const absolutePath = path.normalize(path.join(safeRoot, sanitizedPath));
+
+  if (!absolutePath.startsWith(safeRoot)) {
+    return false;
+  }
+
+  if (!fs.existsSync(absolutePath) || fs.statSync(absolutePath).isDirectory()) {
+    return false;
+  }
+
+  const ext = path.extname(absolutePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+  res.writeHead(200, { 'Content-Type': contentType });
+  res.end(fs.readFileSync(absolutePath));
+  return true;
+}
+
 function filterPivotLinks(pairs, pivot, limit) {
   if (!pivot) return [];
 
@@ -745,9 +773,14 @@ function handler(req, res) {
     return;
   }
 
-  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/ui' || parsedUrl.pathname === '/chat')) {
-    serveFrontend(res);
-    return;
+  if (req.method === 'GET' && !parsedUrl.pathname.startsWith('/api/')) {
+    if (['/', '/ui', '/chat'].includes(parsedUrl.pathname)) {
+      serveFrontend(res);
+      return;
+    }
+
+    const served = serveStatic(res, parsedUrl.pathname || '/');
+    if (served) return;
   }
 
   if (req.method === 'POST') {
