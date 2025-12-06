@@ -92,7 +92,7 @@ resonancia-api/
 - [ ] Modes multi-profiles (neutral, hypno, ado, etp)
 - [x] Déploiement Vercel
  - Handler serverless (`api/echo.js`) avec auto-détection Vercel (config minimale `vercel.json`)
- - Runtime Node 18 (aligné via `package.json` / `.nvmrc`) et `.vercelignore` pour alléger le bundle
+ - Runtime Node 24 (aligné via `package.json` / `.nvmrc`) et `.vercelignore` pour alléger le bundle
 - [ ] Tests automatiques
 - [ ] Garanties RGPD
 
@@ -121,5 +121,5 @@ vercel --prod
 ```
 
 La fonction principale est `api/echo.js` et la route `/api/echo` est exposée automatiquement (les routes API étant détectées sans configuration custom).
-Le runtime Node 18 est forcé via `package.json` et `.nvmrc`, et `.vercelignore` exclut les dossiers de travail locaux.
-Les réécritures `/, /ui, /chat -> public/index.html` évitent les 404 sur le frontend et `/api/chat` dispose désormais de sa fonction dédiée (`api/chat.js`).
+Le runtime Node 24 est forcé via `package.json` et `.nvmrc`, et `.vercelignore` exclut les dossiers de travail locaux.
+La configuration minimale (`vercel.json` avec uniquement `version: 2`) suffit pour servir `index.html` à la racine et exposer automatiquement les handlers API (`api/*.js`), sans réécritures supplémentaires.
