@@ -112,14 +112,21 @@ label { font-size: 13px; color: var(--muted); }
 }
 
 .word {
+  --offset-x: 0px;
+  --offset-y: 0px;
+  --scale: 1;
   display: inline-block;
+  position: relative;
   padding: 6px 10px;
   border-radius: 999px;
   color: #eaf2ff;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  transition: transform 0.4s ease, opacity 0.4s ease, filter 0.4s ease;
+  transition: transform 0.4s ease, opacity 0.4s ease, filter 0.4s ease, left 0.4s ease, top 0.4s ease, font-size 0.4s ease;
+  left: var(--offset-x);
+  top: var(--offset-y);
+  transform: scale(var(--scale));
 }
 
 .word.pivot {

@@ -60,6 +60,11 @@ const cloudState = new Map();
 const WORD_LIFETIME = 12000;
 const REMOVAL_DURATION = 1200;
 const METAPHOR_CLASSES = ['brume', 'orage', 'eclaircie'];
+const BASE_FONT_SIZES = {
+  pivot: 32,
+  noyau: 22,
+  peripherie: 16,
+};
 
 function renderHistory() {
   historyEl.innerHTML = conversation
@@ -143,10 +148,11 @@ function createWord(word, category) {
   const span = document.createElement('span');
   span.className = `word ${category}`;
   span.textContent = word;
+  span.dataset.category = category;
   return span;
 }
 
-function upsertWord(word, category) {
+function upsertWord(word, category, metrics) {
   if (!word) return;
   const key = word.toLowerCase();
   let entry = cloudState.get(key);
@@ -154,16 +160,67 @@ function upsertWord(word, category) {
   if (!entry) {
     const element = createWord(word, category);
     wordCloudEl.appendChild(element);
-    entry = { element, lastSeen: Date.now() };
+    entry = { element, lastSeen: Date.now(), category };
     cloudState.set(key, entry);
   } else {
+    entry.category = category;
     entry.element.className = `word ${category}`;
     entry.element.textContent = word;
     entry.lastSeen = Date.now();
     entry.element.classList.remove('word-expiring');
   }
 
+  applyWordMetrics(entry, metrics);
   setPlaceholderVisibility();
+}
+
+function hashWord(word) {
+  let hash = 0;
+  for (let i = 0; i < word.length; i += 1) {
+    hash = (hash << 5) - hash + word.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function applyWordMetrics(entry, metrics = {}) {
+  const word = entry.element.textContent.toLowerCase();
+  const deltaMap = metrics.delta || {};
+  const stabilityMap = metrics.stabilite || metrics.stability || {};
+  const forceMap = metrics.forceLiens || {};
+
+  const delta = Number(deltaMap[word] || 0);
+  const stability = Number(stabilityMap[word] || 0);
+
+  const baseSize = BASE_FONT_SIZES[entry.category] || 16;
+  const sizeBoost = Math.max(-0.5, Math.min(0.8, delta * 0.12));
+  entry.element.style.fontSize = `${Math.max(10, baseSize * (1 + sizeBoost))}px`;
+
+  const opacity = 0.3 + Math.min(stability, 6) / 6 * 0.7;
+  entry.element.style.opacity = Math.min(1, opacity).toFixed(2);
+
+  const strongestLink = Object.entries(forceMap)
+    .filter(([pair]) => {
+      const [a, b] = pair.split('-');
+      return a === word || b === word;
+    })
+    .sort(([, wA], [, wB]) => Number(wB) - Number(wA))[0];
+
+  if (strongestLink) {
+    const weight = Number(strongestLink[1]) || 0;
+    const offset = weight > 0.5 ? (Math.min(weight, 1) - 0.5) * 24 : 0;
+    const angle = (hashWord(word) % 360) * (Math.PI / 180);
+    const dx = Math.cos(angle) * offset;
+    const dy = Math.sin(angle) * offset;
+    entry.element.style.setProperty('--offset-x', `${dx.toFixed(1)}px`);
+    entry.element.style.setProperty('--offset-y', `${dy.toFixed(1)}px`);
+  } else {
+    entry.element.style.setProperty('--offset-x', '0px');
+    entry.element.style.setProperty('--offset-y', '0px');
+  }
+
+  const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
+  entry.element.style.setProperty('--scale', scale.toFixed(2));
 }
 
 function cleanupWords() {
@@ -195,11 +252,20 @@ function updateWordCloudFromEcho(data) {
   const noyauWords = Array.isArray(data?.noyau) ? data.noyau : [];
   const peripherieWords = Array.isArray(data?.peripherie) ? data.peripherie : [];
 
-  pivotWords.forEach((w) => upsertWord(w, 'pivot'));
-  noyauWords.forEach((w) => upsertWord(w, 'noyau'));
-  peripherieWords.forEach((w) => upsertWord(w, 'peripherie'));
+  const metrics = {
+    delta: data?.delta || {},
+    stabilite: data?.stabilite || data?.stability || {},
+    forceLiens: data?.forceLiens || {},
+  };
+
+  pivotWords.forEach((w) => upsertWord(w, 'pivot', metrics));
+  noyauWords.forEach((w) => upsertWord(w, 'noyau', metrics));
+  peripherieWords.forEach((w) => upsertWord(w, 'peripherie', metrics));
 
   applyMetaphor(data?.metaphor);
+
+  // réapplique les métriques aux mots existants pour refléter la stabilité/delta actuelle
+  cloudState.forEach((entry) => applyWordMetrics(entry, metrics));
 }
 
 function resetWordCloud() {
@@ -215,6 +281,15 @@ function formatCooccurrences(coocc) {
   return entries.length === 0
     ? '—'
     : entries.map(([pair, count]) => `${pair}: ${count}`).join(', ');
+}
+
+function formatTopMap(mapObj, limit = 6) {
+  if (!mapObj || typeof mapObj !== 'object') return '—';
+  const pairs = Object.entries(mapObj)
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .slice(0, limit)
+    .map(([key, val]) => `${key}: ${Number(val).toFixed(2)}`);
+  return pairs.length ? pairs.join(', ') : '—';
 }
 
 function friendlyNebiusError(error) {
@@ -287,7 +362,7 @@ async function updateEcho(message) {
   try {
     const data = await callResonanceAPI(message);
     const origin = data.mock ? 'MOCK local' : '/api/echo';
-    echoPanel.textContent = `Source: ${origin}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
+    echoPanel.textContent = `Source: ${origin}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
     updateWordCloudFromEcho(data);
   } catch (error) {
     echoPanel.textContent = 'Analyse impossible: ' + error.message;
