@@ -1,26 +1,7 @@
 {
-  "version": 2,
-  "buildCommand": "npm install",
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.js",
-      "methods": ["POST", "GET", "OPTIONS"]
-    },
-    {
-      "src": "/(.*)",
-      "status": 404
-    }
-  ],
-  "outputDirectory": "public",
   "functions": {
     "api/echo.js": {
-      "runtime": "nodejs20.x",
-      "maxDuration": 10,
-      "memory": 128
+      "runtime": "nodejs20.x"
     }
   }
 }
