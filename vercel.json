@@ -15,6 +15,7 @@
       "status": 404
     }
   ],
+  "outputDirectory": "public",
   "functions": {
     "api/echo.js": {
       "runtime": "nodejs20.x",
