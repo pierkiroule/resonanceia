@@ -7,6 +7,9 @@
   --accent: #7a6bff;
   --text: #e7e7ea;
   --muted: #9ca0b5;
+  --pivot: #7ab2ff;
+  --noyau: #9b8bff;
+  --peripherie: #cfd8ff;
 }
 
 * { box-sizing: border-box; }
@@ -108,6 +111,69 @@ pre {
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: center; }
 label { font-size: 13px; color: var(--muted); }
 
+.toggle-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.toggle {
+  position: relative;
+  border: 1px solid #293248;
+  background: #121724;
+  color: #dbe4ff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  min-height: 38px;
+}
+
+.toggle[aria-pressed="true"] {
+  border-color: rgba(122, 107, 255, 0.8);
+  box-shadow: 0 0 0 6px rgba(122, 107, 255, 0.12);
+  background: linear-gradient(120deg, rgba(122, 107, 255, 0.15), rgba(74, 139, 255, 0.15));
+}
+
+.toggle-label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #c4d0ff;
+}
+
+.toggle-handle {
+  width: 44px;
+  height: 22px;
+  border-radius: 999px;
+  background: #1f2636;
+  border: 1px solid #2c364d;
+  position: relative;
+  display: inline-block;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.toggle-handle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, var(--primary), var(--accent));
+  transition: transform 0.25s ease;
+}
+
+.toggle[aria-pressed="true"] .toggle-handle::after {
+  transform: translateX(20px);
+}
+
 /* Word cloud */
 .wordcloud {
   position: relative;
@@ -119,6 +185,40 @@ label { font-size: 13px; color: var(--muted); }
   overflow: hidden;
   transition: background 0.6s ease, border-color 0.6s ease, filter 0.6s ease;
   isolation: isolate;
+}
+
+.graph-shell {
+  position: relative;
+  min-height: 280px;
+  border-radius: 14px;
+  border: 1px solid rgba(80, 100, 150, 0.35);
+  background: radial-gradient(circle at 40% 40%, rgba(95, 120, 200, 0.12), rgba(12, 18, 36, 0.85));
+  overflow: hidden;
+  transition: filter 0.6s ease, border-color 0.6s ease, background 0.6s ease;
+}
+
+#resonantGraph {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.graph-link {
+  stroke: rgba(126, 158, 255, 0.65);
+  stroke-linecap: round;
+  transition: stroke-width 0.4s ease, stroke 0.4s ease;
+}
+
+.graph-node {
+  transition: r 0.3s ease, opacity 0.3s ease, transform 0.4s ease;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.35));
+}
+
+.graph-label {
+  font-size: 12px;
+  fill: #dfe9ff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
 .wordcloud::after {
@@ -185,6 +285,15 @@ label { font-size: 13px; color: var(--muted); }
   animation: fadeInPop 0.9s ease forwards;
   background: rgba(255, 255, 255, 0.06);
 }
+
+.graph-node[data-category="pivot"] { fill: var(--pivot); }
+.graph-node[data-category="noyau"] { fill: var(--noyau); }
+.graph-node[data-category="peripherie"] { fill: var(--peripherie); }
+.graph-node[data-category="pivot"] ~ .graph-label { fill: #eaf2ff; font-weight: 700; }
+
+.graph-shell.metaphor-brume { filter: blur(0.4px) saturate(0.85); border-color: rgba(131, 167, 210, 0.35); }
+.graph-shell.metaphor-orage { filter: saturate(1.05) brightness(0.9); border-color: rgba(140, 46, 46, 0.55); animation: shakeStorm 12s ease-in-out infinite; }
+.graph-shell.metaphor-eclaircie { filter: brightness(1.05); border-color: rgba(255, 219, 120, 0.45); box-shadow: 0 0 30px rgba(255, 219, 120, 0.18); }
 
 .placeholder {
   color: var(--muted);
