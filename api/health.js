@@ -23,7 +23,7 @@ module.exports = (req, res) => {
     frontend: '/',
     nebius: {
       enabled: Boolean(process.env.NEBIUS_API_KEY),
-      model: 'Qwen/Qwen3-32B'
+      model: 'google/gemma-2-2b-it'
     }
   }));
 };

@@ -13,6 +13,9 @@ const dataModeEl = document.getElementById('dataMode');
 const debugToggleBtn = document.getElementById('debugToggle');
 const nebiusStatusEl = document.getElementById('nebiusStatus');
 const nebiusOutputEl = document.getElementById('nebiusOutput');
+const modeToggleBtn = document.getElementById('modeToggle');
+const graphContainerEl = document.getElementById('graph-container');
+const graphSvg = document.getElementById('resonantGraph');
 
 // --- MOCK API REPLACEMENT FOR DEV --- //
 const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -24,6 +27,14 @@ let mockMemory = {}; // {mot: count}
 const FRENCH_STOPWORDS = new Set([
   'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux'
 ]);
+
+const SYSTEM_PROMPT = `Tu réponds en français, en posture d’écoute transverse.
+Tu ne commentes jamais ton raisonnement interne.
+Tu ne dis jamais ce que tu vas faire.
+Tu ne donnes aucun conseil.
+Tu reformules, explores, questionnes ce qui résonne.
+Tu ne mentionnes jamais être un modèle.
+Tu ne produis aucune phrase contenant : 'je dois', 'je vais', 'okay the user', 'as a model'.`;
 
 function normalizeWord(word) {
   return word
@@ -108,6 +119,16 @@ const DRIFT_INTENSITY = {
   peripherie: 14,
 };
 
+const GRAPH_RADII = {
+  pivot: 0,
+  noyau: 150,
+  peripherie: 220,
+};
+
+const GRAPH_CENTER = { x: 320, y: 210 };
+const graphState = new Map();
+const graphLinks = [];
+
 function renderHistory() {
   historyEl.innerHTML = conversation
     .map((entry) => {
@@ -164,6 +185,12 @@ function setDataMode() {
   dataModeEl.textContent = `Mode API: ${modeLabel}`;
 }
 
+function setToggleState(useNebius) {
+  if (!modeToggleBtn) return;
+  modeToggleBtn.setAttribute('aria-pressed', useNebius ? 'true' : 'false');
+  modeToggleBtn.classList.toggle('is-on', useNebius);
+}
+
 function computeNebiusStatusLabel() {
   return ENABLE_NEBIUS
     ? 'Nebius activé — clé API détectée'
@@ -181,6 +208,7 @@ function applyRuntimeConfig({ nebiusEnabled, forceMock }) {
     USE_MOCK = forceMock;
   }
 
+  setToggleState(ENABLE_NEBIUS);
   setDataMode();
   displayNebiusStatus(computeNebiusStatusLabel());
   displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
@@ -220,10 +248,11 @@ function resetConversation() {
   conversation.length = 0;
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
-  setStatus('Prêt à dialoguer (modèle Qwen/Qwen3-32B).');
+  setStatus('Prêt à dialoguer (modèle google/gemma-2-2b-it).');
   displayNebiusStatus(computeNebiusStatusLabel());
   displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
   resetWordCloud();
+  resetGraph();
   if (USE_MOCK) {
     mockMemory = {};
   }
@@ -303,6 +332,13 @@ function applyWordMetrics(entry, metrics = {}) {
   const opacity = 0.3 + Math.min(stability, 6) / 6 * 0.7;
   entry.element.style.opacity = Math.min(1, opacity).toFixed(2);
 
+  entry.forceOffset = strongestLinkOffset(word, forceMap);
+
+  const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
+  entry.element.style.setProperty('--scale', scale.toFixed(2));
+}
+
+function strongestLinkOffset(word, forceMap = {}) {
   const strongestLink = Object.entries(forceMap)
     .filter(([pair]) => {
       const [a, b] = pair.split('-');
@@ -310,10 +346,7 @@ function applyWordMetrics(entry, metrics = {}) {
     })
     .sort(([, wA], [, wB]) => Number(wB) - Number(wA))[0];
 
-  entry.forceOffset = strongestLink ? Math.max(0, Number(strongestLink[1]) - 0.5) * 30 : 0;
-
-  const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
-  entry.element.style.setProperty('--scale', scale.toFixed(2));
+  return strongestLink ? Math.max(0, Number(strongestLink[1]) - 0.5) * 28 : 0;
 }
 
 function setWordPosition(entry, time) {
@@ -350,10 +383,191 @@ function cleanupWords() {
   });
 }
 
+function ensureGraphLayers() {
+  if (!graphSvg) return null;
+  let linksLayer = graphSvg.querySelector('g[data-layer="links"]');
+  let nodesLayer = graphSvg.querySelector('g[data-layer="nodes"]');
+
+  if (!linksLayer) {
+    linksLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    linksLayer.dataset.layer = 'links';
+    graphSvg.appendChild(linksLayer);
+  }
+
+  if (!nodesLayer) {
+    nodesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodesLayer.dataset.layer = 'nodes';
+    graphSvg.appendChild(nodesLayer);
+  }
+
+  return { linksLayer, nodesLayer };
+}
+
+function upsertGraphNode(word, category, metrics, forceMap) {
+  if (!graphSvg) return null;
+  const layers = ensureGraphLayers();
+  if (!layers) return null;
+
+  const key = word.toLowerCase();
+  let entry = graphState.get(key);
+
+  if (!entry) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+    circle.classList.add('graph-node');
+    label.classList.add('graph-label');
+    label.textContent = word;
+
+    group.appendChild(circle);
+    group.appendChild(label);
+    layers.nodesLayer.appendChild(group);
+
+    entry = {
+      group,
+      circle,
+      label,
+      angle: (hashWord(word) % 360) * (Math.PI / 180),
+      driftSeed: (hashWord(word) % 1000) / 1000,
+      forceOffset: 0,
+      x: GRAPH_CENTER.x,
+      y: GRAPH_CENTER.y,
+    };
+    graphState.set(key, entry);
+  }
+
+  entry.category = category;
+  entry.group.dataset.category = category;
+  entry.circle.dataset.category = category;
+  entry.label.textContent = word;
+
+  const deltaMap = metrics.delta || {};
+  const stabilityMap = metrics.stabilite || metrics.stability || {};
+  const delta = Number(deltaMap[word] || 0);
+  const stability = Number(stabilityMap[word] || 0);
+
+  const radius = 10 + Math.max(0, delta) * 1.4;
+  entry.circle.setAttribute('r', Math.min(26, radius).toFixed(2));
+  const opacity = 0.35 + Math.min(1, stability / 5) * 0.6;
+  entry.circle.style.opacity = Math.min(1, opacity).toFixed(2);
+
+  entry.forceOffset = strongestLinkOffset(word, forceMap);
+  entry.baseRadius = GRAPH_RADII[category] ?? GRAPH_RADII.peripherie;
+  entry.lastSeen = Date.now();
+  return entry;
+}
+
+function removeStaleGraphNodes(activeWords) {
+  graphState.forEach((entry, key) => {
+    if (!activeWords.has(key)) {
+      entry.group.remove();
+      graphState.delete(key);
+    }
+  });
+}
+
+function renderGraphLinks(forceMap = {}) {
+  if (!graphSvg) return;
+  const layers = ensureGraphLayers();
+  if (!layers) return;
+
+  layers.linksLayer.innerHTML = '';
+  graphLinks.length = 0;
+
+  Object.entries(forceMap).forEach(([pair, weight]) => {
+    const [rawA, rawB] = pair.split('-');
+    if (!rawA || !rawB) return;
+    const a = rawA.toLowerCase();
+    const b = rawB.toLowerCase();
+
+    const source = graphState.get(a);
+    const target = graphState.get(b);
+    if (!source || !target) return;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.classList.add('graph-link');
+    const width = 1 + Math.max(0.2, Number(weight) || 0) * 0.8;
+    line.style.strokeWidth = width.toFixed(2);
+    line.style.strokeOpacity = (0.35 + Math.min(0.45, Number(weight) / 4)).toFixed(2);
+    layers.linksLayer.appendChild(line);
+    graphLinks.push({ line, source, target });
+  });
+}
+
+function updateGraphFromEcho(data) {
+  if (!graphSvg) return;
+
+  const pivotWords = filterWordList(data?.pivot ? [data.pivot] : []);
+  const noyauWords = filterWordList(Array.isArray(data?.noyau) ? data.noyau : []);
+  const peripherieWords = filterWordList(Array.isArray(data?.peripherie) ? data.peripherie : []);
+
+  const metrics = {
+    delta: data?.delta || {},
+    stabilite: data?.stabilite || data?.stability || {},
+    forceLiens: data?.forceLiens || {},
+  };
+
+  const activeWords = new Set();
+  const forceMap = metrics.forceLiens;
+
+  pivotWords.forEach((w) => { upsertGraphNode(w, 'pivot', metrics, forceMap); activeWords.add(w); });
+  noyauWords.forEach((w) => { upsertGraphNode(w, 'noyau', metrics, forceMap); activeWords.add(w); });
+  peripherieWords.forEach((w) => { upsertGraphNode(w, 'peripherie', metrics, forceMap); activeWords.add(w); });
+
+  removeStaleGraphNodes(activeWords);
+  renderGraphLinks(forceMap);
+}
+
+function resetGraph() {
+  graphLinks.length = 0;
+  graphState.forEach((entry) => entry.group.remove());
+  graphState.clear();
+  if (graphSvg) {
+    graphSvg.innerHTML = '';
+  }
+}
+
+function animateGraph(time) {
+  const now = time || performance.now();
+  graphState.forEach((entry) => {
+    const wobble = Math.sin(now / 2400 + entry.driftSeed * 8) * (entry.category === 'pivot' ? 6 : 12);
+    const sway = Math.cos(now / 2800 + entry.driftSeed * 5) * (entry.category === 'pivot' ? 2 : 6);
+    const radius = (entry.baseRadius || 0) + entry.forceOffset + wobble;
+    const angle = entry.angle + Math.sin(now / 3200 + entry.driftSeed * 6) * 0.35;
+    const x = GRAPH_CENTER.x + Math.cos(angle) * radius;
+    const y = GRAPH_CENTER.y + Math.sin(angle) * radius * 0.88 + sway;
+
+    entry.x = x;
+    entry.y = y;
+
+    entry.circle.setAttribute('cx', x.toFixed(2));
+    entry.circle.setAttribute('cy', y.toFixed(2));
+    entry.label.setAttribute('x', x.toFixed(2));
+    entry.label.setAttribute('y', (y + 4).toFixed(2));
+  });
+
+  graphLinks.forEach(({ line, source, target }) => {
+    line.setAttribute('x1', (source?.x ?? GRAPH_CENTER.x).toFixed(2));
+    line.setAttribute('y1', (source?.y ?? GRAPH_CENTER.y).toFixed(2));
+    line.setAttribute('x2', (target?.x ?? GRAPH_CENTER.x).toFixed(2));
+    line.setAttribute('y2', (target?.y ?? GRAPH_CENTER.y).toFixed(2));
+  });
+
+  requestAnimationFrame(animateGraph);
+}
+
 function applyMetaphorStyle(metaphor) {
   wordCloudEl.classList.remove(...METAPHOR_CLASSES.map((m) => `metaphor-${m}`));
+  if (graphContainerEl) {
+    graphContainerEl.classList.remove(...METAPHOR_CLASSES.map((m) => `metaphor-${m}`));
+  }
+
   if (metaphor && METAPHOR_CLASSES.includes(metaphor)) {
     wordCloudEl.classList.add(`metaphor-${metaphor}`);
+    if (graphContainerEl) {
+      graphContainerEl.classList.add(`metaphor-${metaphor}`);
+    }
   }
   metaphorBadge.textContent = metaphor || '—';
 }
@@ -475,9 +689,20 @@ async function updateEcho(message) {
     const origin = data.mock ? 'MOCK local' : '/api/echo';
     echoPanel.textContent = `Source: ${origin}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
     updateWordCloudFromEcho(data);
+    updateGraphFromEcho(data);
   } catch (error) {
     echoPanel.textContent = 'Analyse impossible: ' + error.message;
   }
+}
+
+function toggleApiMode() {
+  ENABLE_NEBIUS = !ENABLE_NEBIUS;
+  USE_MOCK = !ENABLE_NEBIUS;
+  setToggleState(ENABLE_NEBIUS);
+  setDataMode();
+  displayNebiusStatus(computeNebiusStatusLabel());
+  displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
+  setStatus(ENABLE_NEBIUS ? 'Nebius activé — prêt à répondre.' : 'Mode MOCK actif — réponses simulées.');
 }
 
 async function sendMessage() {
@@ -491,7 +716,7 @@ async function sendMessage() {
   sendBtn.disabled = true;
 
   const payload = {
-    messages: conversation,
+    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversation],
     temperature: Number(temperatureInput.value) || 0.7,
     top_p: Number(topPInput.value) || 0.9,
     max_tokens: Number(maxTokensInput.value) || 256,
@@ -505,7 +730,7 @@ async function sendMessage() {
 
     const statusText = data.mock
       ? '✅ Réponse simulée (Nebius désactivé).'
-      : `✅ Réponse du modèle ${data.model || 'Qwen/Qwen3-32B'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
+      : `✅ Réponse du modèle ${data.model || 'google/gemma-2-2b-it'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
     setStatus(statusText);
     displayNebiusStatus(data.mock ? computeNebiusStatusLabel() : 'Nebius activé — clé API présente');
     displayNebiusOutput(data);
@@ -537,8 +762,13 @@ if (debugToggleBtn) {
   });
 }
 
+if (modeToggleBtn) {
+  modeToggleBtn.addEventListener('click', toggleApiMode);
+}
+
 setPlaceholderVisibility();
 renderHistory();
 bootstrapRuntimeConfig().finally(() => resetConversation());
 setInterval(cleanupWords, 2000);
 requestAnimationFrame(animateWords);
+requestAnimationFrame(animateGraph);

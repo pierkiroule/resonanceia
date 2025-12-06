@@ -48,7 +48,7 @@ curl -X POST http://localhost:3000/api/echo \
 
 ### POST `/api/chat`
 
-Proxy léger vers Nebius Studio (modèle `Qwen/Qwen3-32B`).
+Proxy léger vers Nebius Studio (modèle `google/gemma-2-2b-it`).
 
 **Body minimal:**
 ```json

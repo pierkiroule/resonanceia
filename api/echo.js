@@ -211,6 +211,7 @@ function callNebiusChat(payload) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': '*/*',
         'Authorization': `Bearer ${apiKey}`,
         'Content-Length': Buffer.byteLength(requestBody)
       }
@@ -585,9 +586,16 @@ async function handleChatRequest(req, res) {
     return;
   }
 
+  const nebMessages = chatMessages.map(message => ({
+    role: message.role,
+    content: message.role === 'system'
+      ? message.content
+      : [{ type: 'text', text: message.content }]
+  }));
+
   const nebPayload = {
-    model: 'Qwen/Qwen3-32B',
-    messages: chatMessages,
+    model: 'google/gemma-2-2b-it',
+    messages: nebMessages,
     temperature,
     top_p,
     max_tokens
