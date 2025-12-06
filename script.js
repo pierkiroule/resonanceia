@@ -7,9 +7,10 @@ const messageInput = document.getElementById('msg');
 const temperatureInput = document.getElementById('temperature');
 const topPInput = document.getElementById('top_p');
 const maxTokensInput = document.getElementById('max_tokens');
-const wordCloudEl = document.getElementById('wordCloud');
+const wordCloudEl = document.getElementById('wordcloud-container');
 const metaphorBadge = document.getElementById('metaphorBadge');
 const dataModeEl = document.getElementById('dataMode');
+const debugToggleBtn = document.getElementById('debugToggle');
 const nebiusStatusEl = document.getElementById('nebiusStatus');
 const nebiusOutputEl = document.getElementById('nebiusOutput');
 
@@ -19,8 +20,38 @@ const ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est confi
 
 let mockMemory = {}; // {mot: count}
 
+const FRENCH_STOPWORDS = new Set([
+  'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux'
+]);
+
+function normalizeWord(word) {
+  return word
+    .normalize('NFD')
+    .replace(/[^\p{L}\p{N}-]+/gu, '')
+    .toLowerCase();
+}
+
+function isStopword(word) {
+  return FRENCH_STOPWORDS.has(word);
+}
+
 function mock(message) {
-  const words = message.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = message
+    .split(/\s+/)
+    .map(normalizeWord)
+    .filter(Boolean)
+    .filter((w) => !isStopword(w));
+
+  if (words.length === 0) {
+    return {
+      pivot: '',
+      noyau: [],
+      peripherie: [],
+      cooccurrences: {},
+      metaphor: 'brume',
+      mock: true,
+    };
+  }
 
   // update memory
   words.forEach(w => {
@@ -40,7 +71,7 @@ function mock(message) {
   const peripherie = Object.keys(mockMemory).filter(w => mockMemory[w] === 1);
 
   // metaphor logic
-  const intensity = Object.values(mockMemory).reduce((a,b)=>a+b,0)
+  const intensity = Object.values(mockMemory).reduce((a, b) => a + b, 0);
   let metaphor = "brume";
   if (intensity > 6) metaphor = "orage";
   if (words.includes("espoir") || words.includes("lumiere")) metaphor = "eclaircie";
@@ -64,6 +95,16 @@ const BASE_FONT_SIZES = {
   pivot: 32,
   noyau: 22,
   peripherie: 16,
+};
+const RADII = {
+  pivot: 0,
+  noyau: 110,
+  peripherie: 170,
+};
+const DRIFT_INTENSITY = {
+  pivot: 4,
+  noyau: 9,
+  peripherie: 14,
 };
 
 function renderHistory() {
@@ -117,6 +158,23 @@ function setDataMode() {
   dataModeEl.textContent = `Mode API: ${USE_MOCK ? 'MOCK local (mockMemory)' : 'Requête /api/echo'}`;
 }
 
+function filterWordList(list) {
+  return (list || [])
+    .map(normalizeWord)
+    .filter(Boolean)
+    .filter((w) => !isStopword(w));
+}
+
+function toggleDebugPanels(show) {
+  document.querySelectorAll('.debug-section').forEach((section) => {
+    section.setAttribute('aria-hidden', show ? 'false' : 'true');
+  });
+  if (debugToggleBtn) {
+    debugToggleBtn.textContent = show ? 'Masquer les détails techniques' : 'Afficher les détails techniques';
+    debugToggleBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+  }
+}
+
 function resetConversation() {
   conversation.length = 0;
   renderHistory();
@@ -144,23 +202,27 @@ function setPlaceholderVisibility() {
   }
 }
 
-function createWord(word, category) {
-  const span = document.createElement('span');
-  span.className = `word ${category}`;
-  span.textContent = word;
-  span.dataset.category = category;
-  return span;
-}
-
 function upsertWord(word, category, metrics) {
   if (!word) return;
   const key = word.toLowerCase();
   let entry = cloudState.get(key);
 
   if (!entry) {
-    const element = createWord(word, category);
+    const element = document.createElement('span');
+    element.className = `word ${category}`;
+    element.textContent = word;
+    element.dataset.category = category;
     wordCloudEl.appendChild(element);
-    entry = { element, lastSeen: Date.now(), category };
+    const angle = (hashWord(word) % 360) * (Math.PI / 180);
+    entry = {
+      element,
+      lastSeen: Date.now(),
+      category,
+      angle,
+      baseRadius: RADII[category] || 0,
+      driftSeed: (hashWord(word) % 1000) / 1000,
+      forceOffset: 0,
+    };
     cloudState.set(key, entry);
   } else {
     entry.category = category;
@@ -168,6 +230,7 @@ function upsertWord(word, category, metrics) {
     entry.element.textContent = word;
     entry.lastSeen = Date.now();
     entry.element.classList.remove('word-expiring');
+    entry.baseRadius = RADII[category] || entry.baseRadius;
   }
 
   applyWordMetrics(entry, metrics);
@@ -206,21 +269,28 @@ function applyWordMetrics(entry, metrics = {}) {
     })
     .sort(([, wA], [, wB]) => Number(wB) - Number(wA))[0];
 
-  if (strongestLink) {
-    const weight = Number(strongestLink[1]) || 0;
-    const offset = weight > 0.5 ? (Math.min(weight, 1) - 0.5) * 24 : 0;
-    const angle = (hashWord(word) % 360) * (Math.PI / 180);
-    const dx = Math.cos(angle) * offset;
-    const dy = Math.sin(angle) * offset;
-    entry.element.style.setProperty('--offset-x', `${dx.toFixed(1)}px`);
-    entry.element.style.setProperty('--offset-y', `${dy.toFixed(1)}px`);
-  } else {
-    entry.element.style.setProperty('--offset-x', '0px');
-    entry.element.style.setProperty('--offset-y', '0px');
-  }
+  entry.forceOffset = strongestLink ? Math.max(0, Number(strongestLink[1]) - 0.5) * 30 : 0;
 
   const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
   entry.element.style.setProperty('--scale', scale.toFixed(2));
+}
+
+function setWordPosition(entry, time) {
+  const drift = DRIFT_INTENSITY[entry.category] || 6;
+  const wobble = Math.sin(time / 2000 + entry.driftSeed * 8) * drift;
+  const lightShake = Math.cos(time / 2500 + entry.driftSeed * 5) * (entry.category === 'pivot' ? 2 : 6);
+  const radius = (entry.baseRadius + entry.forceOffset + wobble) / 2.2;
+  const angle = entry.angle + Math.sin(time / 3200 + entry.driftSeed * 10) * 0.45;
+  const x = 50 + Math.cos(angle) * radius + lightShake * 0.1;
+  const y = 50 + Math.sin(angle) * radius + lightShake * 0.1;
+
+  entry.element.style.setProperty('--x', `${x}%`);
+  entry.element.style.setProperty('--y', `${y}%`);
+}
+
+function animateWords(time) {
+  cloudState.forEach((entry) => setWordPosition(entry, time || performance.now()));
+  requestAnimationFrame(animateWords);
 }
 
 function cleanupWords() {
@@ -239,7 +309,7 @@ function cleanupWords() {
   });
 }
 
-function applyMetaphor(metaphor) {
+function applyMetaphorStyle(metaphor) {
   wordCloudEl.classList.remove(...METAPHOR_CLASSES.map((m) => `metaphor-${m}`));
   if (metaphor && METAPHOR_CLASSES.includes(metaphor)) {
     wordCloudEl.classList.add(`metaphor-${metaphor}`);
@@ -248,9 +318,9 @@ function applyMetaphor(metaphor) {
 }
 
 function updateWordCloudFromEcho(data) {
-  const pivotWords = data?.pivot ? [data.pivot] : [];
-  const noyauWords = Array.isArray(data?.noyau) ? data.noyau : [];
-  const peripherieWords = Array.isArray(data?.peripherie) ? data.peripherie : [];
+  const pivotWords = filterWordList(data?.pivot ? [data.pivot] : []);
+  const noyauWords = filterWordList(Array.isArray(data?.noyau) ? data.noyau : []);
+  const peripherieWords = filterWordList(Array.isArray(data?.peripherie) ? data.peripherie : []);
 
   const metrics = {
     delta: data?.delta || {},
@@ -262,7 +332,7 @@ function updateWordCloudFromEcho(data) {
   noyauWords.forEach((w) => upsertWord(w, 'noyau', metrics));
   peripherieWords.forEach((w) => upsertWord(w, 'peripherie', metrics));
 
-  applyMetaphor(data?.metaphor);
+  applyMetaphorStyle(data?.metaphor);
 
   // réapplique les métriques aux mots existants pour refléter la stabilité/delta actuelle
   cloudState.forEach((entry) => applyWordMetrics(entry, metrics));
@@ -272,7 +342,7 @@ function resetWordCloud() {
   cloudState.forEach((entry) => entry.element.remove());
   cloudState.clear();
   setPlaceholderVisibility();
-  applyMetaphor(null);
+  applyMetaphorStyle(null);
 }
 
 function formatCooccurrences(coocc) {
@@ -417,9 +487,19 @@ messageInput.addEventListener('keydown', (e) => {
   }
 });
 
+let debugOpen = false;
+toggleDebugPanels(debugOpen);
+if (debugToggleBtn) {
+  debugToggleBtn.addEventListener('click', () => {
+    debugOpen = !debugOpen;
+    toggleDebugPanels(debugOpen);
+  });
+}
+
 setPlaceholderVisibility();
 renderHistory();
 setDataMode();
 displayNebiusStatus(ENABLE_NEBIUS ? 'Nebius activé — clé API attendue' : 'Nebius non activé — mode développement MOCK');
 displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
 setInterval(cleanupWords, 2000);
+requestAnimationFrame(animateWords);

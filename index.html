@@ -44,18 +44,23 @@
       </div>
       <span class="badge" id="metaphorBadge">—</span>
     </div>
-    <div id="wordCloud" class="wordcloud">
+    <div id="wordcloud-container" class="wordcloud">
+      <div class="orbit orbit-pivot" aria-hidden="true"></div>
+      <div class="orbit orbit-noyau" aria-hidden="true"></div>
+      <div class="orbit orbit-peripherie" aria-hidden="true"></div>
       <div class="placeholder small">En attente des premiers mots...</div>
     </div>
   </section>
 
-  <section class="panel" aria-label="Analyse résonante brute">
+  <button id="debugToggle" class="ghost-btn" aria-expanded="false">Afficher les détails techniques</button>
+
+  <section class="panel debug-section" aria-label="Analyse résonante brute">
     <h3>Analyse résonante</h3>
     <p class="small">Chaque message est aussi envoyé à l'API locale <code>/api/echo</code> pour extraire le pivot, le noyau et la périphérie.</p>
     <pre id="echoPanel">En attente d'un premier message...</pre>
   </section>
 
-  <section class="panel" aria-label="Modèle Nebius">
+  <section class="panel debug-section" aria-label="Modèle Nebius">
     <h3>Modèle Nebius</h3>
     <p class="small" id="nebiusStatus">Nebius non activé — mode développement MOCK</p>
     <pre id="nebiusOutput">Réponse simulée en attente...</pre>
