@@ -219,6 +219,93 @@ function callNebiusChat(payload) {
 const memoryPath = path.join(__dirname, '..', 'graph.json');
 const memory = new StructuralMemory(memoryPath);
 
+// Mémoire courte frugale (dernier messages)
+const SHORT_TERM_LIMIT = 10;
+const shortTermMemory = {
+  messages: [],
+  totalFreq: {},
+  totalPairs: {},
+  stability: {},
+  lastTokens: []
+};
+
+function cloneCounts(map) {
+  return Object.keys(map || {}).reduce((acc, key) => {
+    acc[key] = map[key];
+    return acc;
+  }, {});
+}
+
+function updateShortTermStats(tokens) {
+  const previousTotals = cloneCounts(shortTermMemory.totalFreq);
+
+  // Supprime message le plus ancien si limite atteinte
+  if (shortTermMemory.messages.length >= SHORT_TERM_LIMIT) {
+    const oldest = shortTermMemory.messages.shift();
+    Object.entries(oldest.freq).forEach(([word, count]) => {
+      shortTermMemory.totalFreq[word] = (shortTermMemory.totalFreq[word] || 0) - count;
+      if (shortTermMemory.totalFreq[word] <= 0) delete shortTermMemory.totalFreq[word];
+    });
+
+    Object.entries(oldest.pairs).forEach(([pair, count]) => {
+      shortTermMemory.totalPairs[pair] = (shortTermMemory.totalPairs[pair] || 0) - count;
+      if (shortTermMemory.totalPairs[pair] <= 0) delete shortTermMemory.totalPairs[pair];
+    });
+  }
+
+  // Fréquences et co-occurrences du message courant
+  const freq = computeFrequencies(tokens);
+  const pairs = coWordAnalysis(tokens).pairs;
+
+  // Mise à jour des totaux glissants
+  Object.entries(freq).forEach(([word, count]) => {
+    shortTermMemory.totalFreq[word] = (shortTermMemory.totalFreq[word] || 0) + count;
+  });
+
+  Object.entries(pairs).forEach(([pair, count]) => {
+    shortTermMemory.totalPairs[pair] = (shortTermMemory.totalPairs[pair] || 0) + count;
+  });
+
+  shortTermMemory.messages.push({ freq, pairs, tokens: [...tokens] });
+
+  // Delta = différence entre les totaux avant/après ce message
+  const delta = {};
+  const allWords = new Set([...Object.keys(shortTermMemory.totalFreq), ...Object.keys(previousTotals)]);
+  allWords.forEach(word => {
+    const before = previousTotals[word] || 0;
+    const after = shortTermMemory.totalFreq[word] || 0;
+    const diff = after - before;
+    if (diff !== 0) {
+      delta[word] = diff;
+    }
+  });
+
+  // Stabilité = nombre de messages consécutifs où le mot apparaît
+  const prevTokensSet = new Set(shortTermMemory.lastTokens);
+  const currentTokensSet = new Set(tokens);
+  const nextStability = {};
+
+  currentTokensSet.forEach(word => {
+    const previousStreak = prevTokensSet.has(word) ? shortTermMemory.stability[word] || 1 : 0;
+    nextStability[word] = previousStreak + 1;
+  });
+
+  // Force de lien = cooccurrence / max(freqA, freqB) sur la mémoire glissante
+  const forceLiens = {};
+  Object.entries(shortTermMemory.totalPairs).forEach(([pair, count]) => {
+    const [a, b] = pair.split('-');
+    const denom = Math.max(shortTermMemory.totalFreq[a] || 1, shortTermMemory.totalFreq[b] || 1);
+    if (denom > 0) {
+      forceLiens[pair] = Number((count / denom).toFixed(3));
+    }
+  });
+
+  shortTermMemory.stability = nextStability;
+  shortTermMemory.lastTokens = [...tokens];
+
+  return { delta, stability: nextStability, forceLiens };
+}
+
 /**
  * Tokenise un texte en mots significatifs
  * @param {string} text - Texte à tokeniser
@@ -572,6 +659,9 @@ function handleEchoRequest(req, res) {
       const pivot = findPivot(frequencies, cowordData);
       const { noyau, peripherie } = separateByFrequency(frequencies);
       const { echo, metaphor, question, mode: appliedMode } = generateEcho(pivot, noyau, peripherie, mode);
+
+      // Mémoire courte statistique (10 derniers messages)
+      const { delta, stability, forceLiens } = updateShortTermStats(tokens);
       
       // Mise à jour mémoire (avant decay)
       if (!disableMemory) {
@@ -610,6 +700,9 @@ function handleEchoRequest(req, res) {
         question,
         mode: appliedMode,
         liens: topLinks,
+        forceLiens,
+        delta,
+        stabilite: stability,
         centralite: cowordData.nodeScores[pivot] || 0,
         memoire: memoireContext
       }, null, 2));
