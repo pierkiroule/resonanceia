@@ -7,12 +7,15 @@
  */
 
 const http = require('http');
+const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 const VALID_MODES = ['neutral', 'hypno', 'ado', 'etp'];
+const DEFAULT_SYSTEM_PROMPT = 'Tu es un psychologue clinicien bienveillant. Tu écoutes sans juger, reformules ce que l’utilisateur exprime, et tu termines par une question ouverte. Tu ne donnes ni conseils directs, ni diagnostic.';
+const FRONTEND_PATH = path.join(__dirname, '..', 'public', 'index.html');
 
 // Charger les patterns
 let PATTERNS = {};
@@ -28,6 +31,30 @@ try {
       sentenceStructures: ["Le cœur: {pivot}. Résonnances: {cowords}."]
     }
   };
+}
+
+function readRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+function serveFrontend(res) {
+  try {
+    const html = fs.readFileSync(FRONTEND_PATH, 'utf8');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  } catch (error) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Frontend introuvable' }));
+  }
 }
 
 function filterPivotLinks(pairs, pivot, limit) {
@@ -137,6 +164,56 @@ class StructuralMemory {
     
     return context;
   }
+}
+
+function callNebiusChat(payload) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.NEBIUS_API_KEY;
+
+    if (!apiKey) {
+      reject(new Error('NEBIUS_API_KEY manquant dans les variables d’environnement'));
+      return;
+    }
+
+    const requestBody = JSON.stringify(payload);
+
+    const options = {
+      hostname: 'api.tokenfactory.nebius.com',
+      path: '/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Length': Buffer.byteLength(requestBody)
+      }
+    };
+
+    const nebReq = https.request(options, nebRes => {
+      let data = '';
+
+      nebRes.on('data', chunk => {
+        data += chunk;
+      });
+
+      nebRes.on('end', () => {
+        if (nebRes.statusCode < 200 || nebRes.statusCode >= 300) {
+          reject(new Error(`Nebius API error ${nebRes.statusCode}: ${data}`));
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch (error) {
+          reject(new Error('Impossible de parser la réponse Nebius'));
+        }
+      });
+    });
+
+    nebReq.on('error', reject);
+    nebReq.write(requestBody);
+    nebReq.end();
+  });
 }
 
 const memoryPath = path.join(__dirname, '..', 'graph.json');
@@ -317,6 +394,106 @@ function generateEcho(pivot, noyau, peripherie, mode = 'neutral') {
   };
 }
 
+async function handleChatRequest(req, res) {
+  const sendError = (status, message) => {
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: message }));
+  };
+
+  let body = '';
+  try {
+    body = await readRequestBody(req);
+  } catch (error) {
+    sendError(500, 'Impossible de lire la requête');
+    return;
+  }
+
+  let payload;
+  try {
+    payload = body ? JSON.parse(body) : {};
+  } catch (error) {
+    sendError(400, 'Invalid JSON body');
+    return;
+  }
+
+  const allowedKeys = ['message', 'messages', 'temperature', 'top_p', 'max_tokens', 'systemPrompt'];
+  const extraKeys = Object.keys(payload).filter(key => !allowedKeys.includes(key));
+  if (extraKeys.length > 0) {
+    sendError(400, `Unexpected field(s): ${extraKeys.join(', ')}`);
+    return;
+  }
+
+  const { message, messages = [], temperature = 0.7, top_p = 0.9, max_tokens = 256, systemPrompt } = payload;
+
+  if (message !== undefined && typeof message !== 'string') {
+    sendError(400, 'message must be a string when provided');
+    return;
+  }
+
+  if (!Array.isArray(messages)) {
+    sendError(400, 'messages must be an array');
+    return;
+  }
+
+  const sanitizedHistory = messages
+    .map(entry => ({ role: entry.role, content: entry.content }))
+    .filter(entry => ['user', 'assistant'].includes(entry.role) && typeof entry.content === 'string' && entry.content.trim().length > 0)
+    .map(entry => ({ role: entry.role, content: entry.content.trim() }));
+
+  const chatMessages = [
+    { role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
+    ...sanitizedHistory
+  ];
+
+  if (typeof message === 'string' && message.trim()) {
+    chatMessages.push({ role: 'user', content: message.trim() });
+  }
+
+  const hasUserMessage = chatMessages.some(m => m.role === 'user');
+  if (!hasUserMessage) {
+    sendError(400, 'At least one user message is required');
+    return;
+  }
+
+  if (typeof temperature !== 'number' || temperature < 0 || temperature > 1) {
+    sendError(400, 'temperature must be a number between 0 and 1');
+    return;
+  }
+
+  if (typeof top_p !== 'number' || top_p <= 0 || top_p > 1) {
+    sendError(400, 'top_p must be a number between 0 and 1');
+    return;
+  }
+
+  if (typeof max_tokens !== 'number' || max_tokens <= 0 || max_tokens > 2000) {
+    sendError(400, 'max_tokens must be a positive number (max 2000)');
+    return;
+  }
+
+  const nebPayload = {
+    model: 'Qwen/Qwen3-32B',
+    messages: chatMessages,
+    temperature,
+    top_p,
+    max_tokens
+  };
+
+  try {
+    const completion = await callNebiusChat(nebPayload);
+    const reply = completion?.choices?.[0]?.message?.content || '';
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      reply,
+      model: completion?.model || nebPayload.model,
+      usage: completion?.usage || null,
+      messagesSent: chatMessages.length
+    }, null, 2));
+  } catch (error) {
+    sendError(502, error.message);
+  }
+}
+
 /**
  * Traite une requête POST /api/echo
  */
@@ -448,6 +625,16 @@ function handleEchoRequest(req, res) {
 function handler(req, res) {
   const parsedUrl = url.parse(req.url || '/', true);
 
+  const sendHealth = () => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      version: '0.3.0',
+      endpoints: ['/api/echo (POST)', '/api/chat (POST)'],
+      frontend: '/'
+    }));
+  };
+
   // CORS basique
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -460,17 +647,22 @@ function handler(req, res) {
   }
 
   // Health check pour Vercel
-  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/api/echo')) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      version: '0.2.0',
-      endpoint: '/api/echo (POST)'
-    }));
+  if (req.method === 'GET' && (parsedUrl.pathname === '/api/echo' || parsedUrl.pathname === '/health')) {
+    sendHealth();
+    return;
+  }
+
+  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/ui' || parsedUrl.pathname === '/chat')) {
+    serveFrontend(res);
     return;
   }
 
   if (req.method === 'POST') {
+    if (parsedUrl.pathname === '/api/chat') {
+      handleChatRequest(req, res);
+      return;
+    }
+
     // Pour les environnements serverless, on accepte POST direct sur la fonction
     handleEchoRequest(req, res);
   } else {

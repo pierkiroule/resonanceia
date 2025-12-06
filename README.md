@@ -46,6 +46,24 @@ curl -X POST http://localhost:3000/api/echo \
 }
 ```
 
+### POST `/api/chat`
+
+Proxy léger vers Nebius Studio (modèle `Qwen/Qwen3-32B`).
+
+**Body minimal:**
+```json
+{
+  "message": "Je me sens très anxieux depuis quelques jours.",
+  "temperature": 0.7,
+  "top_p": 0.9,
+  "max_tokens": 256
+}
+```
+
+Vous pouvez aussi passer l'historique sous forme de tableau `messages` (objets `{role, content}`), il sera enrichi d'un prompt système par défaut.
+
+> ℹ️ Nécessite la variable d'environnement `NEBIUS_API_KEY`.
+
 ## 🏗️ Architecture
 
 ```
