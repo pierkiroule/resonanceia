@@ -23,7 +23,7 @@
   ],
   "functions": {
     "api/echo.js": {
-      "runtime": "nodejs24.x",
+      "runtime": "nodejs20.x",
       "maxDuration": 10,
       "memory": 128
     }

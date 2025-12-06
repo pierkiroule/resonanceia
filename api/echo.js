@@ -483,5 +483,5 @@ if (require.main === module) {
 
 module.exports = handler;
 module.exports.config = {
-  runtime: 'nodejs24.x'
+  runtime: 'nodejs20.x'
 };
