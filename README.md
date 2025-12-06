@@ -91,7 +91,7 @@ resonancia-api/
 - [ ] Mémoire douce (graph.json)
 - [ ] Modes multi-profiles (neutral, hypno, ado, etp)
 - [x] Déploiement Vercel
- - Handler serverless (`api/echo.js`) + `vercel.json`
+ - Handler serverless (`api/echo.js`) avec auto-détection Vercel (config minimale `vercel.json`)
  - Runtime Node 18 (aligné via `package.json` / `.nvmrc`) et `.vercelignore` pour alléger le bundle
 - [ ] Tests automatiques
 - [ ] Garanties RGPD
@@ -107,6 +107,8 @@ Voir `openapi.json` pour la spec complète (en cours de développement).
 ## 🔁 Déploiement Vercel
 
 Le projet est prêt pour un déploiement serverless sur Vercel.
+
+La configuration minimale (`vercel.json` avec uniquement `version: 2`) laisse Vercel auto-servir `index.html` à la racine et détecter automatiquement les routes API dans `api/*.js`.
 
 Commandes rapides:
 
