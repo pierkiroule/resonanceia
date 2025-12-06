@@ -4,7 +4,11 @@
     { "src": "api/**/*.js", "use": "@vercel/node@3.0.0" },
     { "src": "public/**", "use": "@vercel/static" }
   ],
+  "build": {
+    "env": { "VERCEL_NODE_VERSION": "18" }
+  },
   "functions": {
+    "runtime": "nodejs18.x",
     "api/**.js": { "runtime": "nodejs18.x" }
   },
   "routes": [
