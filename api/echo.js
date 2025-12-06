@@ -53,7 +53,15 @@ class StructuralMemory {
   }
   
   save() {
-    fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf8');
+    try {
+      fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf8');
+    } catch (error) {
+      // En serverless (Vercel), l'écriture échoue - c'est normal
+      // La mémoire est volatile mais l'API fonctionne toujours
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('⚠️  Impossible d\'écrire graph.json:', error.message);
+      }
+    }
   }
   
   updatePivot(pivot) {
@@ -435,12 +443,23 @@ function handler(req, res) {
 
   // CORS basique
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
     res.end();
+    return;
+  }
+
+  // Health check pour Vercel
+  if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/api/echo')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      version: '0.2.0',
+      endpoint: '/api/echo (POST)'
+    }));
     return;
   }
 

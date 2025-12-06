@@ -1,16 +1,34 @@
 {
   "version": 2,
+  "buildCommand": "npm install",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "builds": [
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [
     {
-      "src": "/api/echo",
-      "dest": "/api/echo.js",
-      "methods": ["POST", "OPTIONS"]
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js",
+      "methods": ["POST", "GET", "OPTIONS"]
+    },
+    {
+      "src": "/(.*)",
+      "status": 404
     }
   ],
   "functions": {
     "api/echo.js": {
       "runtime": "nodejs24.x",
-      "maxDuration": 10
+      "maxDuration": 10,
+      "memory": 128
+    }
+  }
+}
     }
   }
 }
