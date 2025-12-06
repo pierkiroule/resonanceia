@@ -6,3 +6,8 @@ npm-debug.log*
 coverage
 .git
 .vscode
+test-handler.js
+.gitignore
+
+# graph.json est généré dynamiquement et n'est pas stocké en production
+# patterns.json et openapi.json DOIVENT être inclus
