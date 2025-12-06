@@ -46,6 +46,24 @@ curl -X POST http://localhost:3000/api/echo \
 }
 ```
 
+### POST `/api/chat`
+
+Proxy léger vers Nebius Studio (modèle `Qwen/Qwen3-32B`).
+
+**Body minimal:**
+```json
+{
+  "message": "Je me sens très anxieux depuis quelques jours.",
+  "temperature": 0.7,
+  "top_p": 0.9,
+  "max_tokens": 256
+}
+```
+
+Vous pouvez aussi passer l'historique sous forme de tableau `messages` (objets `{role, content}`), il sera enrichi d'un prompt système par défaut.
+
+> ℹ️ Nécessite la variable d'environnement `NEBIUS_API_KEY`.
+
 ## 🏗️ Architecture
 
 ```
@@ -73,8 +91,8 @@ resonancia-api/
 - [ ] Mémoire douce (graph.json)
 - [ ] Modes multi-profiles (neutral, hypno, ado, etp)
 - [x] Déploiement Vercel
- - Handler serverless (`api/echo.js`) + `vercel.json`
- - Runtime Node 24 et `.vercelignore` pour alléger le bundle
+ - Handler serverless (`api/echo.js`) avec auto-détection Vercel (config minimale `vercel.json`)
+ - Runtime Node 24 (aligné via `package.json` / `.nvmrc`) et `.vercelignore` pour alléger le bundle
 - [ ] Tests automatiques
 - [ ] Garanties RGPD
 
@@ -90,6 +108,8 @@ Voir `openapi.json` pour la spec complète (en cours de développement).
 
 Le projet est prêt pour un déploiement serverless sur Vercel.
 
+La configuration minimale (`vercel.json` avec uniquement `version: 2`) laisse Vercel auto-servir `index.html` à la racine et détecter automatiquement les routes API dans `api/*.js`.
+
 Commandes rapides:
 
 ```bash
@@ -100,5 +120,6 @@ npm i -g vercel
 vercel --prod
 ```
 
-La fonction principale est `api/echo.js` et la route `/api/echo` est exposée par `vercel.json`.
-Le runtime Node 24 est forcé via `package.json` **et** `vercel.json`, et `.vercelignore` exclut les dossiers de travail locaux.
+La fonction principale est `api/echo.js` et la route `/api/echo` est exposée automatiquement (les routes API étant détectées sans configuration custom).
+Le runtime Node 24 est forcé via `package.json` et `.nvmrc`, et `.vercelignore` exclut les dossiers de travail locaux.
+La configuration minimale (`vercel.json` avec uniquement `version: 2`) suffit pour servir `index.html` à la racine et exposer automatiquement les handlers API (`api/*.js`), sans réécritures supplémentaires.
