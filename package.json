@@ -15,9 +15,6 @@
   ],
   "author": "resonancia",
   "license": "MIT",
-  "engines": {
-    "node": "24.x"
-  },
   "dependencies": {},
   "devDependencies": {
     "jest": "^29.0.0"
