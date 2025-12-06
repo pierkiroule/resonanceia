@@ -15,8 +15,9 @@ const nebiusStatusEl = document.getElementById('nebiusStatus');
 const nebiusOutputEl = document.getElementById('nebiusOutput');
 
 // --- MOCK API REPLACEMENT FOR DEV --- //
-const USE_MOCK = true;
-const ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est configurée
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+let USE_MOCK = isLocalhost;
+let ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est configurée côté serveur
 
 let mockMemory = {}; // {mot: count}
 
@@ -155,7 +156,47 @@ function displayNebiusOutput(response) {
 
 function setDataMode() {
   if (!dataModeEl) return;
-  dataModeEl.textContent = `Mode API: ${USE_MOCK ? 'MOCK local (mockMemory)' : 'Requête /api/echo'}`;
+  const modeLabel = ENABLE_NEBIUS
+    ? 'Nebius activé — requêtes /api/chat'
+    : USE_MOCK
+      ? 'MOCK local (mockMemory)'
+      : 'Requêtes /api/echo sans Nebius';
+  dataModeEl.textContent = `Mode API: ${modeLabel}`;
+}
+
+function computeNebiusStatusLabel() {
+  return ENABLE_NEBIUS
+    ? 'Nebius activé — clé API détectée'
+    : USE_MOCK
+      ? 'Nebius non activé — mode développement MOCK'
+      : 'Nebius non activé — API locale /api/echo';
+}
+
+function applyRuntimeConfig({ nebiusEnabled, forceMock }) {
+  ENABLE_NEBIUS = Boolean(nebiusEnabled);
+
+  if (ENABLE_NEBIUS) {
+    USE_MOCK = false; // on passe automatiquement en mode API réel quand la clé est dispo
+  } else if (typeof forceMock === 'boolean') {
+    USE_MOCK = forceMock;
+  }
+
+  setDataMode();
+  displayNebiusStatus(computeNebiusStatusLabel());
+  displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
+}
+
+async function bootstrapRuntimeConfig() {
+  try {
+    const res = await fetch('/api/health');
+    if (!res.ok) throw new Error('Healthcheck indisponible');
+    const data = await res.json();
+    const nebiusEnabled = Boolean(data?.nebius?.enabled);
+    applyRuntimeConfig({ nebiusEnabled });
+  } catch (error) {
+    console.warn('Impossible de récupérer la configuration runtime:', error.message);
+    applyRuntimeConfig({ nebiusEnabled: false, forceMock: USE_MOCK });
+  }
 }
 
 function filterWordList(list) {
@@ -180,8 +221,8 @@ function resetConversation() {
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
   setStatus('Prêt à dialoguer (modèle Qwen/Qwen3-32B).');
-  displayNebiusStatus('Nebius non activé — mode développement MOCK');
-  displayNebiusOutput({ mock: true });
+  displayNebiusStatus(computeNebiusStatusLabel());
+  displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
   resetWordCloud();
   if (USE_MOCK) {
     mockMemory = {};
@@ -466,7 +507,7 @@ async function sendMessage() {
       ? '✅ Réponse simulée (Nebius désactivé).'
       : `✅ Réponse du modèle ${data.model || 'Qwen/Qwen3-32B'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
     setStatus(statusText);
-    displayNebiusStatus(data.mock ? 'Nebius non activé — mode développement MOCK' : 'Nebius activé — clé API présente');
+    displayNebiusStatus(data.mock ? computeNebiusStatusLabel() : 'Nebius activé — clé API présente');
     displayNebiusOutput(data);
     updateEcho(content);
   } catch (error) {
@@ -498,8 +539,6 @@ if (debugToggleBtn) {
 
 setPlaceholderVisibility();
 renderHistory();
-setDataMode();
-displayNebiusStatus(ENABLE_NEBIUS ? 'Nebius activé — clé API attendue' : 'Nebius non activé — mode développement MOCK');
-displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
+bootstrapRuntimeConfig().finally(() => resetConversation());
 setInterval(cleanupWords, 2000);
 requestAnimationFrame(animateWords);

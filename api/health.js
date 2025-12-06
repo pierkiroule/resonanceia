@@ -20,6 +20,10 @@ module.exports = (req, res) => {
     status: 'ok',
     version: '0.3.0',
     endpoints: ['/api/echo (POST)', '/api/chat (POST)'],
-    frontend: '/'
+    frontend: '/',
+    nebius: {
+      enabled: Boolean(process.env.NEBIUS_API_KEY),
+      model: 'Qwen/Qwen3-32B'
+    }
   }));
 };
