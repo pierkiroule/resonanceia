@@ -9,7 +9,7 @@
   ],
   "functions": {
     "api/echo.js": {
-      "memory": 128,
+      "runtime": "nodejs24.x",
       "maxDuration": 10
     }
   }

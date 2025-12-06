@@ -101,4 +101,4 @@ vercel --prod
 ```
 
 La fonction principale est `api/echo.js` et la route `/api/echo` est exposée par `vercel.json`.
-Le runtime Node 24 est forcé via `package.json`, et `.vercelignore` exclut les dossiers de travail locaux.
+Le runtime Node 24 est forcé via `package.json` **et** `vercel.json`, et `.vercelignore` exclut les dossiers de travail locaux.
