@@ -92,7 +92,7 @@ resonancia-api/
 - [ ] Modes multi-profiles (neutral, hypno, ado, etp)
 - [x] Déploiement Vercel
  - Handler serverless (`api/echo.js`) + `vercel.json`
- - Runtime Node 24 et `.vercelignore` pour alléger le bundle
+ - Runtime Node 18 et `.vercelignore` pour alléger le bundle
 - [ ] Tests automatiques
 - [ ] Garanties RGPD
 
@@ -119,5 +119,5 @@ vercel --prod
 ```
 
 La fonction principale est `api/echo.js` et la route `/api/echo` est exposée par `vercel.json`.
-Le runtime Node 24 est forcé via `package.json` **et** `vercel.json`, et `.vercelignore` exclut les dossiers de travail locaux.
+Le runtime Node 18 est forcé via `package.json` **et** `vercel.json`, et `.vercelignore` exclut les dossiers de travail locaux.
 Les réécritures `/, /ui, /chat -> public/index.html` évitent les 404 sur le frontend et `/api/chat` dispose désormais de sa fonction dédiée (`api/chat.js`).

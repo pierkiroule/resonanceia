@@ -4,6 +4,9 @@
     { "src": "api/**/*.js", "use": "@vercel/node@3.0.0" },
     { "src": "public/**", "use": "@vercel/static" }
   ],
+  "functions": {
+    "api/**.js": { "runtime": "nodejs18.x" }
+  },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(ui|chat)", "dest": "/public/index.html" },
