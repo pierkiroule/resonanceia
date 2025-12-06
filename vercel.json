@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/ui", "destination": "/public/index.html" },
+    { "source": "/chat", "destination": "/public/index.html" }
+  ]
+}

@@ -120,3 +120,4 @@ vercel --prod
 
 La fonction principale est `api/echo.js` et la route `/api/echo` est exposée par `vercel.json`.
 Le runtime Node 24 est forcé via `package.json` **et** `vercel.json`, et `.vercelignore` exclut les dossiers de travail locaux.
+Les réécritures `/, /ui, /chat -> public/index.html` évitent les 404 sur le frontend et `/api/chat` dispose désormais de sa fonction dédiée (`api/chat.js`).

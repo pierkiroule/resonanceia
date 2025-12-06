@@ -681,3 +681,4 @@ if (require.main === module) {
 }
 
 module.exports = handler;
+module.exports.handleChatRequest = handleChatRequest;
