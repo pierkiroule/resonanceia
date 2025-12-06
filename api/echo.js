@@ -30,6 +30,18 @@ try {
   };
 }
 
+function filterPivotLinks(pairs, pivot, limit) {
+  if (!pivot) return [];
+
+  return Object.entries(pairs || {})
+    .filter(([pair]) => {
+      const nodes = pair.split('-');
+      return nodes.includes(pivot);
+    })
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
+}
+
 // Gestion de la mémoire structurale
 class StructuralMemory {
   constructor(filePath) {
@@ -117,10 +129,7 @@ class StructuralMemory {
   }
   
   getMemoryContext(pivot) {
-    const topLinks = Object.entries(this.data.liens)
-      .filter(([pair]) => pair.includes(pivot))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
+    const topLinks = filterPivotLinks(this.data.liens, pivot, 3);
     
     const context = topLinks.length > 0
       ? `Le pivot "${pivot}" s'est manifesté ${this.data.pivots[pivot]?.count || 0} fois. Ses échos : ${topLinks.map(([p, s]) => `${p} (${s.toFixed(1)})`).join(', ')}`
@@ -407,9 +416,7 @@ function handleEchoRequest(req, res) {
       const memoireContext = disableMemory ? null : memory.getMemoryContext(pivot);
       
       // Prépare les liens (top pairs seulement)
-      const topLinks = Object.entries(cowordData.pairs)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
+      const topLinks = filterPivotLinks(cowordData.pairs, pivot, 8)
         .reduce((acc, [pair, score]) => {
           acc[pair] = score;
           return acc;
