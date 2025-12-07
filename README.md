@@ -1,41 +1,52 @@
-# API ÉCHO
+# Webapp ÉCHO (Render-ready)
 
-Refonte minimale pour utiliser l’analyse statistique locale comme Action ChatGPT.
+Application Express minimaliste avec une seule API `/api/echo` et une page unique pour générer les prompts et le bloc OpenAPI destinés à GPT Builder. Aucune dépendance vers des IA externes.
+
+## Démarrage local
+```bash
+npm install
+npm run start
+# puis ouvrir http://localhost:3000
+```
 
 ## Endpoint unique
 `POST /api/echo`
 
-Corps JSON :
+Corps JSON minimal :
 ```json
-{ "message": "je suis anxieux" }
+{ "message": "je me sens pris entre deux choix" }
 ```
 
 Réponse type :
 ```json
 {
-  "pivot": "anxieux",
-  "noyau": ["je", "suis", "..."],
-  "peripherie": ["texte", "unique"],
-  "cooccurrences": { "je": 1, "suis": 1 },
-  "centralite": 3,
-  "metaphore": "comme un ciel en attente",
-  "echo": "Tes mots gravitent autour de « anxieux », là où anxieux rencontre je et suis",
-  "tags": ["#pivot", "#noyau", "#emotion"]
+  "pivot": "choix",
+  "noyau": ["deux", "pris"],
+  "peripherie": ["sens", "entre"],
+  "centralite": 2.5,
+  "cooccurrences": { "deux": 2, "pris": 1 },
+  "tags": ["choix", "deux", "pris"],
+  "metaphore": "comme une vibration sur un fil tendu",
+  "echo": "Tes mots gravitent autour de « choix », en lien avec deux, pris."
 }
 ```
 
-## Connecter à ChatGPT Actions
-1. Déployez l’API (Vercel ou local via `vercel dev`).
-2. Dans les paramètres Actions de ChatGPT, fournissez l’URL de `https://votre-domaine/openapi.json`.
-3. Ajoutez un appel exemple comme ci-dessous pour valider la connexion.
+- Toujours du JSON (pas de HTML).
+- Aucun appel externe ou fallback IA.
+- CORS ouvert pour simplifier l’usage depuis GPT.
 
-Exemple de requête :
-```bash
-curl -X POST https://votre-domaine/api/echo \
-  -H "Content-Type: application/json" \
-  -d '{"message":"je suis anxieux"}'
-```
+## Connecter à GPT Builder
+1. Déployez sur Render (commande de démarrage : `node server.js`).
+2. Copiez les blocs générés par la page `http(s)://<votre-host>/` :
+   - Prompt Système pour le champ "Instructions".
+   - Prompt GPT Action décrivant la configuration.
+   - Bloc OpenAPI JSON à importer dans l’onglet Actions (ou coller l’URL `http(s)://<votre-host>/openapi.json`).
+3. L’Action unique autorisée est `POST /api/echo`.
 
-## Notes
-- Aucun moteur génératif externe n’est utilisé.
-- CORS est activé pour permettre l’appel direct depuis ChatGPT.
+## Fichier OpenAPI statique
+Le fichier `public/openapi.json` décrit l’API et est servi à la racine du site. Il reflète exactement le comportement de l’endpoint Express.
+
+## Déploiement Render
+- Build command : `npm install`
+- Start command : `npm run start`
+- Node 18+.

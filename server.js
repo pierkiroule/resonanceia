@@ -9,57 +9,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const STOP_WORDS = new Set([
-  "je",
-  "tu",
-  "il",
-  "elle",
-  "nous",
-  "vous",
-  "ils",
-  "elles",
-  "et",
-  "ou",
-  "de",
-  "des",
-  "du",
-  "la",
-  "le",
-  "les",
-  "un",
-  "une",
-  "mais",
-  "que",
-  "qui",
-  "dans",
-  "en",
-  "au",
-  "aux",
-  "ce",
-  "ça",
-  "cette",
-  "ces",
-  "ne",
-  "pas",
-  "plus",
-  "pour",
-  "par",
-  "sur",
-  "se",
-  "sa",
-  "son",
-  "mes",
-  "tes",
-  "ses"
+  'je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles',
+  'et', 'ou', 'de', 'des', 'du', 'la', 'le', 'les', 'un', 'une',
+  'mais', 'que', 'qui', 'dans', 'en', 'au', 'aux', 'ce', 'cet',
+  'cette', 'ces', 'ne', 'pas', 'plus', 'pour', 'par', 'sur', 'se',
+  'sa', 'son', 'mes', 'tes', 'ses', 'leur', 'leurs', 'avec', 'comme'
 ]);
 
 const METAPHORS = [
-  "comme un ciel chargé mais vivant",
-  "comme une marée intérieure en mouvement",
-  "comme une constellation qui cherche son centre"
+  'comme une onde qui se propage dans la pièce',
+  'comme un phare qui capte un signal lointain',
+  'comme une vibration sur un fil tendu',
+  'comme une constellation qui cherche son centre'
 ];
 
 app.use(express.json());
 
+// CORS minimal pour un déploiement sur Render ou équivalent
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
@@ -67,50 +33,49 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
-  next();
+  return next();
 });
 
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
 app.post('/api/echo', (req, res) => {
-  const { message } = req.body || {};
-  if (!message || typeof message !== 'string') {
+  const message = typeof req.body?.message === 'string' ? req.body.message : '';
+
+  if (!message.trim()) {
     return res.json(buildEmptyEcho());
   }
 
-  const cleanedWords = sanitizeMessage(message);
-  const meaningfulWords = cleanedWords.filter((word) => word && !STOP_WORDS.has(word));
+  const tokens = tokenize(message);
+  const filtered = tokens.filter((word) => word && !STOP_WORDS.has(word));
 
-  if (meaningfulWords.length === 0) {
+  if (filtered.length === 0) {
     return res.json(buildEmptyEcho());
   }
 
-  const frequencies = countFrequencies(meaningfulWords);
+  const frequencies = countFrequencies(filtered);
   const pivot = selectPivot(frequencies);
-  const cooccurrences = buildCooccurrences(meaningfulWords, pivot);
-  const sortedCooccurrenceEntries = Object.entries(cooccurrences).sort((a, b) => b[1] - a[1]);
-  const noyau = sortedCooccurrenceEntries.slice(0, 3).map(([word]) => word);
-  const noyauSet = new Set(noyau);
-  const peripherie = meaningfulWords.filter((word) => word !== pivot && !noyauSet.has(word));
-  const uniquePeripherie = Array.from(new Set(peripherie));
-  const centralite = Object.values(cooccurrences).reduce((sum, value) => sum + value, 0);
-  const metaphor = pickMetaphor();
+  const cooccurrences = buildCooccurrences(filtered, pivot);
+  const noyau = pickNoyau(cooccurrences);
+  const peripherie = buildPeripherie(filtered, pivot, noyau);
+  const centralite = computeCentrality({ pivot, frequencies, cooccurrences, totalWords: filtered.length });
+  const metaphore = pickMetaphor(pivot.length + filtered.length);
   const echo = buildEchoText(pivot, noyau);
-  const tags = buildTags({ pivot, noyau, peripherie: uniquePeripherie });
+  const tags = buildTags({ pivot, noyau, peripherie });
 
-  res.json({
+  return res.json({
     pivot,
     noyau,
-    peripherie: uniquePeripherie,
+    peripherie,
     centralite,
     cooccurrences,
     tags,
-    metaphore: metaphor,
+    metaphore,
     echo
   });
 });
 
+// Sert l'index pour toute autre route (déploiement statique simple)
 app.get('*', (req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
 });
@@ -119,12 +84,14 @@ app.listen(PORT, () => {
   console.log(`Serveur ÉCHO démarré sur le port ${PORT}`);
 });
 
-function sanitizeMessage(message = '') {
+function tokenize(message = '') {
   return message
     .toLowerCase()
-    .replace(/[,.?!:;]/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
     .split(/\s+/)
-    .map((word) => word.trim())
     .filter(Boolean);
 }
 
@@ -136,8 +103,7 @@ function countFrequencies(words) {
 }
 
 function selectPivot(frequencies) {
-  return Object.entries(frequencies).reduce((best, current) => {
-    const [word, count] = current;
+  return Object.entries(frequencies).reduce((best, [word, count]) => {
     if (!best) return word;
     const bestCount = frequencies[best];
     if (count > bestCount) return word;
@@ -146,21 +112,51 @@ function selectPivot(frequencies) {
   }, '');
 }
 
-function buildCooccurrences(words, pivot) {
-  return words.reduce((acc, word) => {
-    if (word === pivot) return acc;
-    acc[word] = (acc[word] || 0) + 1;
-    return acc;
-  }, {});
+function buildCooccurrences(words, pivot, windowSize = 2) {
+  const cooccurrences = {};
+  words.forEach((word, index) => {
+    if (word !== pivot) return;
+    const start = Math.max(0, index - windowSize);
+    const end = Math.min(words.length, index + windowSize + 1);
+    for (let i = start; i < end; i += 1) {
+      if (i === index) continue;
+      const neighbor = words[i];
+      if (neighbor === pivot) continue;
+      cooccurrences[neighbor] = (cooccurrences[neighbor] || 0) + 1;
+    }
+  });
+  return cooccurrences;
 }
 
-function pickMetaphor() {
-  const index = Math.floor(Math.random() * METAPHORS.length);
+function pickNoyau(cooccurrences) {
+  return Object.entries(cooccurrences)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([word]) => word);
+}
+
+function buildPeripherie(words, pivot, noyau) {
+  const exclude = new Set([pivot, ...noyau]);
+  const peripherie = words.filter((word) => !exclude.has(word));
+  return Array.from(new Set(peripherie));
+}
+
+function computeCentrality({ pivot, frequencies, cooccurrences, totalWords }) {
+  if (!pivot) return 0;
+  const pivotCount = frequencies[pivot] || 0;
+  const cooccSum = Object.values(cooccurrences).reduce((sum, value) => sum + value, 0);
+  const score = (pivotCount + cooccSum) / Math.max(1, totalWords);
+  return Number(score.toFixed(2));
+}
+
+function pickMetaphor(seed) {
+  const index = Math.abs(seed) % METAPHORS.length;
   return METAPHORS[index];
 }
 
 function buildEchoText(pivot, noyau) {
-  const noyauText = noyau.length > 0 ? noyau.join(', ') : 'des nuances encore floues';
+  if (!pivot) return 'Aucun écho extérieur détecté.';
+  const noyauText = noyau.length ? noyau.join(', ') : 'des nuances encore floues';
   return `Tes mots gravitent autour de « ${pivot} », en lien avec ${noyauText}.`;
 }
 
@@ -188,4 +184,3 @@ function buildEmptyEcho() {
     echo: 'Aucun écho extérieur détecté.'
   };
 }
-
