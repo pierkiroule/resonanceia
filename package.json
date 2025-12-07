@@ -1,0 +1,13 @@
+{
+  "name": "resonanceia",
+  "version": "2.0.0",
+  "description": "API ÉCHO locale pour Actions ChatGPT",
+  "type": "module",
+  "engines": {
+    "node": "^18 || ^20"
+  },
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {}
+}

@@ -3,502 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>API ÉCHO – transforme ton IA en IA résonante</title>
+  <title>API ÉCHO</title>
   <style>
-    :root {
-      color-scheme: light;
-    }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 0;
-      background: #f7f7f8;
-      color: #1c1c1e;
+      padding: 24px;
+      background: #0f172a;
+      color: #e5e7eb;
+      line-height: 1.6;
     }
-
-    header {
-      padding: 28px 20px 10px;
-      text-align: center;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 28px;
-      letter-spacing: 0.2px;
-    }
-
-    p.subtitle {
-      margin: 8px auto 0;
-      max-width: 720px;
-      color: #4a4a4d;
-      line-height: 1.5;
-    }
-
     main {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-      padding: 0 20px 32px;
-      max-width: 1200px;
+      max-width: 720px;
       margin: 0 auto;
-    }
-
-    section {
-      background: #fff;
+      background: #111827;
+      border: 1px solid #1f2937;
       border-radius: 14px;
-      padding: 18px 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-      border: 1px solid #ececf0;
+      padding: 24px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
     }
-
-    section h2 {
+    h1 {
       margin-top: 0;
-      font-size: 18px;
-      color: #222;
+      letter-spacing: 0.4px;
     }
-
-    .options {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 10px;
+    code {
+      background: #1f2937;
+      padding: 6px 8px;
+      border-radius: 8px;
+      color: #cbd5e1;
     }
-
-    .option {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #e6e6ea;
-      background: #fafbff;
-    }
-
-    .option label {
-      cursor: pointer;
-      user-select: none;
-      line-height: 1.4;
-    }
-
-    .radio-group {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .field {
-      margin-top: 10px;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #d6d6de;
-      font-size: 15px;
-    }
-
-    #preview {
-      background: #0f172a;
-      color: #e5e7eb;
-      border-radius: 10px;
-      padding: 12px 14px;
-      min-height: 120px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-
-    button {
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: transform 0.05s ease, box-shadow 0.1s ease;
-      background: #1e293b;
-      color: #f8fafc;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-    }
-
-    button.secondary {
-      background: #e2e8f0;
-      color: #0f172a;
-      box-shadow: none;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    pre, code {
-      background: #0f172a;
-      color: #e5e7eb;
+    pre {
+      background: #1f2937;
       padding: 12px;
-      border-radius: 10px;
+      border-radius: 12px;
       overflow-x: auto;
-      display: block;
-      white-space: pre-wrap;
     }
-
-    footer {
-      text-align: center;
-      padding: 10px 0 18px;
-      color: #555;
-      font-size: 14px;
-    }
+    a { color: #a5b4fc; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>API ÉCHO – transforme ton IA en IA résonante</h1>
-    <p class="subtitle">
-      Choisis ton intention, ton public, ton style de réponse et l’intensité de résonance.
-      Nous générons un prompt Système prêt à être collé dans GPT Builder (section “Instructions”) et une URL API ÉCHO prête à l’emploi.
-    </p>
-  </header>
-
   <main>
-    <section>
-      <h2>Comment ça marche ?</h2>
-      <p style="line-height: 1.6; margin: 0 0 10px; color: #3a3a3c;">
-        Configure ton filtre de résonance en quelques clics et récupère un prompt Système ÉCHO prêt à coller dans GPT Builder.
-        Aucun compte supplémentaire, aucune base de données : tout reste dans ton navigateur.
-      </p>
-      <ul style="padding-left: 18px; line-height: 1.5; color: #3a3a3c; margin: 0;">
-        <li>Sélectionne les intentions, le public, le style et l’intensité.</li>
-        <li>Ajoute un nom de filtre et un token d’accès API (prototype si fourni par l’équipe).</li>
-        <li>Génère l’URL API prête et copie le prompt Système ÉCHO.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>1. L’IA invitera surtout la personne à…</h2>
-      <div class="options" id="intentions">
-        <div class="option"><input type="checkbox" id="exprimer" value="exprimer"><label for="exprimer">✍ Mettre en mots ce qui la traverse</label></div>
-        <div class="option"><input type="checkbox" id="comprendre" value="comprendre"><label for="comprendre">🔍 Comprendre ce qui se joue</label></div>
-        <div class="option"><input type="checkbox" id="recul" value="recul"><label for="recul">🔄 Prendre du recul / voir autrement</label></div>
-        <div class="option"><input type="checkbox" id="reguler" value="reguler"><label for="reguler">🌬 Se réguler / revenir au calme</label></div>
-        <div class="option"><input type="checkbox" id="explorer" value="explorer"><label for="explorer">🌱 Explorer / imaginer d’autres possibles</label></div>
-        <div class="option"><input type="checkbox" id="identifier" value="identifier"><label for="identifier">🧭 Identifier ce qui compte pour elle</label></div>
-        <div class="option"><input type="checkbox" id="transformer" value="transformer"><label for="transformer">♻ Transformer son récit</label></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>2. Public et contexte d’usage</h2>
-      <div class="options" id="publics">
-        <div class="option"><input type="checkbox" id="individuel" value="individuel"><label for="individuel">🙋 Individuel</label></div>
-        <div class="option"><input type="checkbox" id="famille" value="famille"><label for="famille">🏠 Famille</label></div>
-        <div class="option"><input type="checkbox" id="couple" value="couple"><label for="couple">💬 Couple</label></div>
-        <div class="option"><input type="checkbox" id="groupe" value="groupe"><label for="groupe">🧑‍🤝‍🧑 Groupe</label></div>
-        <div class="option"><input type="checkbox" id="scolaire" value="scolaire"><label for="scolaire">🏫 Scolaire / éducatif</label></div>
-        <div class="option"><input type="checkbox" id="pro" value="pro"><label for="pro">👔 Professionnel</label></div>
-        <div class="option"><input type="checkbox" id="therapie" value="therapie"><label for="therapie">🧩 Thérapeutique (cadre accompagné)</label></div>
-        <div class="option"><input type="checkbox" id="entre_seances" value="entre_seances"><label for="entre_seances">🪢 Entre les séances (continuité)</label></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>3. Style de réponse souhaité</h2>
-      <div class="options" id="styles">
-        <div class="option"><input type="checkbox" id="neutre" value="neutre"><label for="neutre">📄 Neutre et factuel</label></div>
-        <div class="option"><input type="checkbox" id="empathique" value="empathique"><label for="empathique">🪞 Empathique</label></div>
-        <div class="option"><input type="checkbox" id="psycho" value="psycho"><label for="psycho">📚 Psychoéducatif</label></div>
-        <div class="option"><input type="checkbox" id="socratique" value="socratique"><label for="socratique">💡 Socratique (questions)</label></div>
-        <div class="option"><input type="checkbox" id="symbolique" value="symbolique"><label for="symbolique">🎭 Métaphorique / symbolique</label></div>
-        <div class="option"><input type="checkbox" id="corporel" value="corporel"><label for="corporel">🧘 Sensoriel / corporel</label></div>
-        <div class="option"><input type="checkbox" id="poetique" value="poetique"><label for="poetique">🪶 Poétique / onirique</label></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>4. Intensité de la résonance</h2>
-      <div class="radio-group" id="intensite">
-        <label><input type="radio" name="intensite" value="legere"> Légère — écho très discret</label>
-        <label><input type="radio" name="intensite" value="moderee"> Modérée — juste ce qu’il faut</label>
-        <label><input type="radio" name="intensite" value="haute"> Haute — résonance très métaphorique</label>
-      </div>
-
-      <div class="field">
-        <label for="filterName">Nom de votre filtre (facultatif)</label>
-        <input type="text" id="filterName" placeholder="Filtre Ado, Burn-out, Groupe..." />
-      </div>
-
-      <div class="field">
-        <label for="apiToken">Token API (optionnel, peut venir de l’URL ?token=...)</label>
-        <input type="text" id="apiToken" placeholder="PROTOTYPE_SECRET" />
-      </div>
-
-      <div class="field">
-        <h2>Aperçu en direct</h2>
-        <div id="preview">Sélectionne des options pour voir le filtre se dessiner.</div>
-      </div>
-
-      <div class="actions">
-        <button id="generateBtn">Générer mon prompt ÉCHO</button>
-        <button class="secondary" id="copyPromptBtn">Copier le Prompt Système ÉCHO</button>
-        <button class="secondary" id="copyUrlBtn">Copier l’URL</button>
-      </div>
-
-      <div class="field">
-        <h2>Prompt Système ÉCHO</h2>
-        <textarea id="promptOutput" rows="12" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer ton prompt.</textarea>
-      </div>
-
-      <div class="field">
-        <h2>URL API prête</h2>
-        <code id="urlOutput">—</code>
-      </div>
-    </section>
+    <h1>API ÉCHO</h1>
+    <p>Une unique route locale, sans dépendance externe, prête pour les Actions ChatGPT.</p>
+    <h2>Endpoint</h2>
+    <p><code>POST /api/echo</code></p>
+    <pre>{
+  "message": "je suis anxieux"
+}</pre>
+    <h2>Réponse</h2>
+    <pre>{
+  "pivot": "...",
+  "noyau": ["..."],
+  "peripherie": ["..."],
+  "cooccurrences": { "mot": 2 },
+  "centralite": 3,
+  "metaphore": "...",
+  "echo": "...",
+  "tags": ["#pivot", "#noyau", "#emotion"]
+}</pre>
+    <p>Ajoutez l’URL de <code>/openapi.json</code> dans ChatGPT Actions pour connecter votre agent.</p>
   </main>
-
-  <footer>API ÉCHO · Prête pour ChatGPT Actions via openapi.json</footer>
-
-  <script>
-    const BASE_API_URL = `${window.location.origin}/api/echo`;
-
-    const groups = {
-      intentions: ['exprimer', 'comprendre', 'recul', 'reguler', 'explorer', 'identifier', 'transformer'],
-      publics: ['individuel', 'famille', 'couple', 'groupe', 'scolaire', 'pro', 'therapie', 'entre_seances'],
-      styles: ['neutre', 'empathique', 'psycho', 'socratique', 'symbolique', 'corporel', 'poetique']
-    };
-
-    function getTokenFromPage() {
-      const fromField = document.getElementById('apiToken').value.trim();
-      if (fromField) return fromField;
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('token') || '';
-    }
-
-    function getSelectedValues(groupName) {
-      return groups[groupName]
-        .map((id) => document.getElementById(id))
-        .filter((el) => el && el.checked)
-        .map((el) => el.value);
-    }
-
-    function getSelectedIntensity() {
-      const radio = document.querySelector('input[name="intensite"]:checked');
-      return radio ? radio.value : '';
-    }
-
-    function updatePreview() {
-      const intentions = getSelectedValues('intentions');
-      const publics = getSelectedValues('publics');
-      const styles = getSelectedValues('styles');
-      const intensite = getSelectedIntensity();
-      const nom = document.getElementById('filterName').value.trim();
-
-      const lines = [
-        intentions.length ? `Intentions : ${intentions.join(', ')}` : 'Intentions : —',
-        publics.length ? `Publics : ${publics.join(', ')}` : 'Publics : —',
-        styles.length ? `Styles : ${styles.join(', ')}` : 'Styles : —',
-        intensite ? `Intensité : ${intensite}` : 'Intensité : —',
-        nom ? `Nom du filtre : ${nom}` : 'Nom du filtre : —'
-      ];
-
-      document.getElementById('preview').textContent = lines.join('\n');
-    }
-
-    function generateApiUrl(config) {
-      const params = new URLSearchParams();
-      if (config.intentions.length) params.set('intentions', config.intentions.join(','));
-      if (config.publics.length) params.set('publics', config.publics.join(','));
-      if (config.styles.length) params.set('styles', config.styles.join(','));
-      if (config.intensite) params.set('intensite', config.intensite);
-      if (config.nom) params.set('nom', config.nom);
-      const token = getTokenFromPage();
-      if (token) params.set('token', token);
-      const qs = params.toString();
-      return qs ? `${BASE_API_URL}?${qs}` : BASE_API_URL;
-    }
-
-    function saveToLocalStorage(config) {
-      const token = getTokenFromPage();
-      localStorage.setItem('echoConfig', JSON.stringify({ ...config, token }));
-    }
-
-    function loadFromLocalStorage() {
-      const raw = localStorage.getItem('echoConfig');
-      if (!raw) return;
-      try {
-        const saved = JSON.parse(raw);
-        groups.intentions.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.checked = saved.intentions?.includes(id);
-        });
-        groups.publics.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.checked = saved.publics?.includes(id);
-        });
-        groups.styles.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.checked = saved.styles?.includes(id);
-        });
-        if (saved.intensite) {
-          const radio = document.querySelector(`input[name="intensite"][value="${saved.intensite}"]`);
-          if (radio) radio.checked = true;
-        }
-        if (saved.nom) {
-          document.getElementById('filterName').value = saved.nom;
-        }
-        if (saved.token) {
-          document.getElementById('apiToken').value = saved.token;
-        }
-      } catch (err) {
-        console.warn('Impossible de relire la configuration stockée', err);
-      }
-      updatePreview();
-    }
-
-    function generateConfig() {
-      const config = {
-        intentions: getSelectedValues('intentions'),
-        publics: getSelectedValues('publics'),
-        styles: getSelectedValues('styles'),
-        intensite: getSelectedIntensity(),
-        nom: document.getElementById('filterName').value.trim() || null
-      };
-
-      saveToLocalStorage(config);
-      updatePreview();
-
-      const url = generateApiUrl(config);
-      document.getElementById('urlOutput').textContent = url;
-      const prompt = generateSystemPrompt(config);
-      document.getElementById('promptOutput').value = prompt;
-
-      return { config, url, prompt };
-    }
-
-    const labels = {
-      intentions: {
-        exprimer: 'inviter à mettre en mots ce qui la traverse',
-        comprendre: 'aider à comprendre ce qui se joue',
-        recul: 'proposer de prendre du recul',
-        reguler: 'contribuer à la régulation et au retour au calme',
-        explorer: 'ouvrir des possibles et explorer',
-        identifier: 'identifier ce qui compte pour elle',
-        transformer: 'accompagner la transformation du récit'
-      },
-      publics: {
-        individuel: 'individuel',
-        famille: 'famille',
-        couple: 'couple',
-        groupe: 'groupe',
-        scolaire: 'scolaire / éducatif',
-        pro: 'professionnel',
-        therapie: 'thérapeutique',
-        entre_seances: 'entre les séances'
-      },
-      styles: {
-        neutre: 'neutre et factuel',
-        empathique: 'empathique',
-        psycho: 'psychoéducatif',
-        socratique: 'socratique (questions)',
-        symbolique: 'symbolique / métaphorique',
-        corporel: 'sensoriel / corporel',
-        poetique: 'poétique / onirique'
-      }
-    };
-
-    const intensiteDescriptions = {
-      legere: 'Légère — reformulation simple et écho discret.',
-      moderee: 'Modérée — suggestions métaphoriques modérées.',
-      haute: 'Haute — liberté poétique, symbolique et sensorielle.'
-    };
-
-    function formatList(values, groupKey) {
-      if (!values.length) return 'non précisé';
-      return values.map((val) => labels[groupKey]?.[val] || val).join(', ');
-    }
-
-    function generateSystemPrompt(config) {
-      const intentionsText = formatList(config.intentions, 'intentions');
-      const publicsText = formatList(config.publics, 'publics');
-      const stylesText = formatList(config.styles, 'styles');
-      const intensiteText = intensiteDescriptions[config.intensite] || 'non précisée (légère, modérée ou haute).';
-
-      const lines = [
-        '===== PROMPT SYSTÈME ÉCHO =====',
-        "Tu fonctionnes dans l'Espace de l'Écho.",
-        `Ton rôle est de favoriser : ${intentionsText}.`,
-        `Tu t'adresses principalement à : ${publicsText}.`,
-        `Tu t'exprimes dans un style : ${stylesText}.`,
-        `Intensité de résonance : ${intensiteText}`,
-        config.nom ? `Nom du filtre : ${config.nom}.` : null,
-        '',
-        'Principes relationnels :',
-        '- Tu reformules et résonnes plutôt que d\'expliquer.',
-        "- Tu n'interprètes pas à la place de la personne.",
-        "- Tu n'es pas un thérapeute ni un expert, mais une médiation.",
-        '- Tu laisses des silences textuels lorsque nécessaire (…).'
-      ].filter(Boolean);
-
-      if (config.styles.includes('symbolique')) {
-        lines.push('Tu peux évoquer images, archétypes, constellations émotionnelles.');
-      }
-      if (config.styles.includes('poetique')) {
-        lines.push('Tu privilégies un langage métaphorique suggestif.');
-      }
-      if (config.styles.includes('corporel')) {
-        lines.push('Tu ramènes parfois vers les sensations ou la posture.');
-      }
-
-      lines.push('', 'Intensité :', '- légère → reformulation simple.', '- modérée → suggestion métaphorique modérée.', '- haute → liberté poétique + symbolique + sensorialité.', '', 'Fin du prompt système.', '===== FIN =====');
-
-      return lines.join('\n');
-    }
-
-    function copyToClipboard(text) {
-      if (!text) return;
-      navigator.clipboard.writeText(text).catch(() => alert('Copie impossible dans ce navigateur.'));
-    }
-
-    function attachListeners() {
-      document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach((input) => {
-        input.addEventListener('change', generateConfig);
-      });
-      document.getElementById('filterName').addEventListener('input', generateConfig);
-
-      document.getElementById('generateBtn').addEventListener('click', () => {
-        generateConfig();
-      });
-
-      document.getElementById('copyUrlBtn').addEventListener('click', () => {
-        const { url } = generateConfig();
-        copyToClipboard(url);
-      });
-
-      document.getElementById('copyPromptBtn').addEventListener('click', () => {
-        const { prompt } = generateConfig();
-        copyToClipboard(prompt);
-      });
-    }
-
-    function hydrateFromQueryToken() {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      if (token) {
-        const input = document.getElementById('apiToken');
-        input.value = token;
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loadFromLocalStorage();
-      hydrateFromQueryToken();
-      attachListeners();
-      updatePreview();
-      generateConfig();
-    });
-  </script>
 </body>
 </html>
