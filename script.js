@@ -248,7 +248,7 @@ function resetConversation() {
   conversation.length = 0;
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
-  setStatus('Prêt à dialoguer (modèle Qwen/Qwen3-32B).');
+  setStatus('Prêt à dialoguer (modèle google/gemma-2-2b-it).');
   displayNebiusStatus(computeNebiusStatusLabel());
   displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
   resetWordCloud();
@@ -730,7 +730,7 @@ async function sendMessage() {
 
     const statusText = data.mock
       ? '✅ Réponse simulée (Nebius désactivé).'
-      : `✅ Réponse du modèle ${data.model || 'Qwen/Qwen3-32B'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
+      : `✅ Réponse du modèle ${data.model || 'google/gemma-2-2b-it'} (messages envoyés: ${data.messagesSent || 'n/a'})`;
     setStatus(statusText);
     displayNebiusStatus(data.mock ? computeNebiusStatusLabel() : 'Nebius activé — clé API présente');
     displayNebiusOutput(data);
