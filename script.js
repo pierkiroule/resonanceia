@@ -9,6 +9,7 @@ const topPInput = document.getElementById('top_p');
 const maxTokensInput = document.getElementById('max_tokens');
 const wordCloudEl = document.getElementById('wordcloud-container');
 const metaphorBadge = document.getElementById('metaphorBadge');
+const wordMemoryResetBtn = document.getElementById('wordMemoryReset');
 const dataModeEl = document.getElementById('dataMode');
 const debugToggleBtn = document.getElementById('debugToggle');
 const nebiusStatusEl = document.getElementById('nebiusStatus');
@@ -31,7 +32,8 @@ const resonanceHistory = [];
 let mockMemory = {}; // {mot: count}
 
 const FRENCH_STOPWORDS = new Set([
-  'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux'
+  'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux',
+  'un', 'une', 'd', 'dans', 'pour', 'par', 'que'
 ]);
 
 const SYSTEM_PROMPT = `Tu réponds en français, en posture d’écoute transverse.
@@ -60,6 +62,11 @@ const METAPHOR_IMAGES = {
   ],
 };
 
+const WORD_MEMORY_KEY = 'resonant-word-memory';
+const WORD_FADE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+let wordMemory = {};
+let lastPivot = '';
+
 function normalizeWord(word) {
   return word
     .normalize('NFD')
@@ -69,6 +76,32 @@ function normalizeWord(word) {
 
 function isStopword(word) {
   return FRENCH_STOPWORDS.has(word);
+}
+
+function loadMemory() {
+  try {
+    const raw = localStorage.getItem(WORD_MEMORY_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.entries(parsed).reduce((acc, [key, value]) => {
+      if (value && typeof value.count === 'number' && typeof value.lastSeen === 'number') {
+        acc[key] = { count: value.count, lastSeen: value.lastSeen };
+      }
+      return acc;
+    }, {});
+  } catch (error) {
+    console.warn('Mémoire locale corrompue, réinitialisation.', error);
+    return {};
+  }
+}
+
+function saveMemory() {
+  try {
+    localStorage.setItem(WORD_MEMORY_KEY, JSON.stringify(wordMemory));
+  } catch (error) {
+    console.warn('Impossible de sauvegarder la mémoire locale', error);
+  }
 }
 
 function pickFromArray(list = []) {
@@ -222,25 +255,7 @@ function mock(message) {
 }
 
 const conversation = [];
-const cloudState = new Map();
-const WORD_LIFETIME = 12000;
-const REMOVAL_DURATION = 1200;
 const METAPHOR_CLASSES = ['brume', 'orage', 'eclaircie'];
-const BASE_FONT_SIZES = {
-  pivot: 32,
-  noyau: 22,
-  peripherie: 16,
-};
-const RADII = {
-  pivot: 0,
-  noyau: 110,
-  peripherie: 170,
-};
-const DRIFT_INTENSITY = {
-  pivot: 4,
-  noyau: 9,
-  peripherie: 14,
-};
 
 const GRAPH_RADII = {
   pivot: 0,
@@ -373,6 +388,70 @@ function filterWordList(list) {
     .filter((w) => !isStopword(w));
 }
 
+function renderWordcloud() {
+  if (!wordCloudEl) return;
+  wordCloudEl.innerHTML = '';
+
+  const entries = Object.entries(wordMemory);
+  if (entries.length === 0) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder small';
+    placeholder.textContent = '— En attente des premiers mots résonants…';
+    wordCloudEl.appendChild(placeholder);
+    return;
+  }
+
+  const maxCount = Math.max(...entries.map(([, info]) => info.count), 1);
+  const now = Date.now();
+
+  entries
+    .sort((a, b) => {
+      if (a[0] === lastPivot) return -1;
+      if (b[0] === lastPivot) return 1;
+      return Number(b[1].count) - Number(a[1].count) || a[0].localeCompare(b[0]);
+    })
+    .forEach(([word, info]) => {
+      const size = 0.8 + (Number(info.count) / maxCount) * (2.2 - 0.8);
+      const token = document.createElement('span');
+      token.className = 'word-token';
+      token.textContent = word;
+      token.style.fontSize = `${size.toFixed(2)}rem`;
+      if (word === lastPivot) token.classList.add('pivot');
+      if (now - info.lastSeen > WORD_FADE_THRESHOLD) token.classList.add('faded');
+      wordCloudEl.appendChild(token);
+    });
+}
+
+function updateMemoryWithEcho(data = {}) {
+  const now = Date.now();
+  const incoming = [];
+
+  if (data?.pivot) incoming.push({ word: data.pivot, category: 'pivot' });
+  (Array.isArray(data?.noyau) ? data.noyau : []).forEach((word) => incoming.push({ word, category: 'noyau' }));
+  (Array.isArray(data?.peripherie) ? data.peripherie : []).forEach((word) => incoming.push({ word, category: 'peripherie' }));
+
+  incoming.forEach(({ word, category }) => {
+    const normalized = normalizeWord(word);
+    if (!normalized || isStopword(normalized)) return;
+    const current = wordMemory[normalized] || { count: 0, lastSeen: now };
+    wordMemory[normalized] = { count: current.count + 1, lastSeen: now };
+    if (category === 'pivot') {
+      lastPivot = normalized;
+    }
+  });
+
+  saveMemory();
+  renderWordcloud();
+}
+
+function clearMemory() {
+  wordMemory = {};
+  lastPivot = '';
+  saveMemory();
+  applyMetaphorStyle(null);
+  renderWordcloud();
+}
+
 function toggleDebugPanels(show) {
   document.querySelectorAll('.debug-section').forEach((section) => {
     section.setAttribute('aria-hidden', show ? 'false' : 'true');
@@ -391,91 +470,11 @@ function resetConversation() {
   setStatus('Prêt à dialoguer (modèle google/gemma-2-2b-it).');
   displayNebiusStatus(computeNebiusStatusLabel());
   displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
-  resetWordCloud();
+  clearMemory();
   resetGraph();
   if (USE_MOCK) {
     mockMemory = {};
   }
-}
-
-function setPlaceholderVisibility() {
-  const placeholder = wordCloudEl.querySelector('.placeholder');
-  if (cloudState.size === 0) {
-    if (!placeholder) {
-      const p = document.createElement('div');
-      p.className = 'placeholder small';
-      p.textContent = 'En attente des premiers mots...';
-      wordCloudEl.appendChild(p);
-    }
-  } else if (placeholder) {
-    placeholder.remove();
-  }
-}
-
-function upsertWord(word, category, metrics) {
-  if (!word) return;
-  const key = word.toLowerCase();
-  let entry = cloudState.get(key);
-
-  if (!entry) {
-    const element = document.createElement('span');
-    element.className = `word ${category}`;
-    element.textContent = word;
-    element.dataset.category = category;
-    wordCloudEl.appendChild(element);
-    const angle = (hashWord(word) % 360) * (Math.PI / 180);
-    entry = {
-      element,
-      lastSeen: Date.now(),
-      category,
-      angle,
-      baseRadius: RADII[category] || 0,
-      driftSeed: (hashWord(word) % 1000) / 1000,
-      forceOffset: 0,
-    };
-    cloudState.set(key, entry);
-  } else {
-    entry.category = category;
-    entry.element.className = `word ${category}`;
-    entry.element.textContent = word;
-    entry.lastSeen = Date.now();
-    entry.element.classList.remove('word-expiring');
-    entry.baseRadius = RADII[category] || entry.baseRadius;
-  }
-
-  applyWordMetrics(entry, metrics);
-  setPlaceholderVisibility();
-}
-
-function hashWord(word) {
-  let hash = 0;
-  for (let i = 0; i < word.length; i += 1) {
-    hash = (hash << 5) - hash + word.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-function applyWordMetrics(entry, metrics = {}) {
-  const word = entry.element.textContent.toLowerCase();
-  const deltaMap = metrics.delta || {};
-  const stabilityMap = metrics.stabilite || metrics.stability || {};
-  const forceMap = metrics.forceLiens || {};
-
-  const delta = Number(deltaMap[word] || 0);
-  const stability = Number(stabilityMap[word] || 0);
-
-  const baseSize = BASE_FONT_SIZES[entry.category] || 16;
-  const sizeBoost = Math.max(-0.5, Math.min(0.8, delta * 0.12));
-  entry.element.style.fontSize = `${Math.max(10, baseSize * (1 + sizeBoost))}px`;
-
-  const opacity = 0.3 + Math.min(stability, 6) / 6 * 0.7;
-  entry.element.style.opacity = Math.min(1, opacity).toFixed(2);
-
-  entry.forceOffset = strongestLinkOffset(word, forceMap);
-
-  const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
-  entry.element.style.setProperty('--scale', scale.toFixed(2));
 }
 
 function strongestLinkOffset(word, forceMap = {}) {
@@ -487,40 +486,6 @@ function strongestLinkOffset(word, forceMap = {}) {
     .sort(([, wA], [, wB]) => Number(wB) - Number(wA))[0];
 
   return strongestLink ? Math.max(0, Number(strongestLink[1]) - 0.5) * 28 : 0;
-}
-
-function setWordPosition(entry, time) {
-  const drift = DRIFT_INTENSITY[entry.category] || 6;
-  const wobble = Math.sin(time / 2000 + entry.driftSeed * 8) * drift;
-  const lightShake = Math.cos(time / 2500 + entry.driftSeed * 5) * (entry.category === 'pivot' ? 2 : 6);
-  const radius = (entry.baseRadius + entry.forceOffset + wobble) / 2.2;
-  const angle = entry.angle + Math.sin(time / 3200 + entry.driftSeed * 10) * 0.45;
-  const x = 50 + Math.cos(angle) * radius + lightShake * 0.1;
-  const y = 50 + Math.sin(angle) * radius + lightShake * 0.1;
-
-  entry.element.style.setProperty('--x', `${x}%`);
-  entry.element.style.setProperty('--y', `${y}%`);
-}
-
-function animateWords(time) {
-  cloudState.forEach((entry) => setWordPosition(entry, time || performance.now()));
-  requestAnimationFrame(animateWords);
-}
-
-function cleanupWords() {
-  const now = Date.now();
-  cloudState.forEach((entry, key) => {
-    if (entry.removing) return;
-    if (now - entry.lastSeen > WORD_LIFETIME) {
-      entry.removing = true;
-      entry.element.classList.add('word-expiring');
-      setTimeout(() => {
-        entry.element.remove();
-        cloudState.delete(key);
-        setPlaceholderVisibility();
-      }, REMOVAL_DURATION);
-    }
-  });
 }
 
 function ensureGraphLayers() {
@@ -712,34 +677,6 @@ function applyMetaphorStyle(metaphor) {
   metaphorBadge.textContent = metaphor || '—';
 }
 
-function updateWordCloudFromEcho(data) {
-  const pivotWords = filterWordList(data?.pivot ? [data.pivot] : []);
-  const noyauWords = filterWordList(Array.isArray(data?.noyau) ? data.noyau : []);
-  const peripherieWords = filterWordList(Array.isArray(data?.peripherie) ? data.peripherie : []);
-
-  const metrics = {
-    delta: data?.delta || {},
-    stabilite: data?.stabilite || data?.stability || {},
-    forceLiens: data?.forceLiens || {},
-  };
-
-  pivotWords.forEach((w) => upsertWord(w, 'pivot', metrics));
-  noyauWords.forEach((w) => upsertWord(w, 'noyau', metrics));
-  peripherieWords.forEach((w) => upsertWord(w, 'peripherie', metrics));
-
-  applyMetaphorStyle(data?.metaphor);
-
-  // réapplique les métriques aux mots existants pour refléter la stabilité/delta actuelle
-  cloudState.forEach((entry) => applyWordMetrics(entry, metrics));
-}
-
-function resetWordCloud() {
-  cloudState.forEach((entry) => entry.element.remove());
-  cloudState.clear();
-  setPlaceholderVisibility();
-  applyMetaphorStyle(null);
-}
-
 function formatCooccurrences(coocc) {
   if (!coocc || typeof coocc !== 'object') return '—';
   const entries = Object.entries(coocc);
@@ -783,7 +720,8 @@ function renderEchoData(data, origin = '/api/echo') {
   if (!data) return;
   const originLabel = data.mock ? 'MOCK local' : origin;
   echoPanel.textContent = `Source: ${originLabel}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
-  updateWordCloudFromEcho(data);
+  updateMemoryWithEcho(data);
+  applyMetaphorStyle(data?.metaphor);
   updateGraphFromEcho(data);
   pushResonanceHistory(data);
 }
@@ -927,6 +865,9 @@ async function sendMessage() {
 
 sendBtn.addEventListener('click', sendMessage);
 resetBtn.addEventListener('click', resetConversation);
+if (wordMemoryResetBtn) {
+  wordMemoryResetBtn.addEventListener('click', () => clearMemory());
+}
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
     sendMessage();
@@ -962,10 +903,9 @@ if (poetryLevelInput) {
   });
 }
 
-setPlaceholderVisibility();
+wordMemory = loadMemory();
+renderWordcloud();
 renderHistory();
 setResonanceMode(RESONANCE_MODE);
 bootstrapRuntimeConfig().finally(() => resetConversation());
-setInterval(cleanupWords, 2000);
-requestAnimationFrame(animateWords);
 requestAnimationFrame(animateGraph);

@@ -203,16 +203,56 @@ input[type="range"] {
 }
 
 /* Word cloud */
+.wordcloud-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .wordcloud {
-  position: relative;
-  min-height: 320px;
-  padding: 16px;
-  border-radius: 14px;
-  background: radial-gradient(circle at 50% 50%, rgba(76, 91, 128, 0.14), rgba(18, 24, 38, 0.9));
-  border: 1px solid rgba(97, 125, 182, 0.3);
-  overflow: hidden;
-  transition: background 0.6s ease, border-color 0.6s ease, filter 0.6s ease;
-  isolation: isolate;
+  min-height: 200px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #0f1119;
+  border: 1px solid rgba(120, 140, 190, 0.24);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.word-token {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #eaf1ff;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.word-token:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.word-token.pivot {
+  background: rgba(109, 176, 255, 0.18);
+  border-color: rgba(109, 176, 255, 0.6);
+  box-shadow: 0 0 16px rgba(109, 176, 255, 0.35);
+  font-weight: 800;
+}
+
+.word-token.faded {
+  opacity: 0.45;
+  filter: saturate(0.8);
+}
+
+.wordcloud .placeholder {
+  position: static;
+  transform: none;
+  text-align: center;
+  width: 100%;
 }
 
 .graph-shell {
@@ -249,132 +289,9 @@ input[type="range"] {
   pointer-events: none;
 }
 
-.wordcloud::after {
-  content: "";
-  position: absolute;
-  inset: -40%;
-  background: radial-gradient(circle, rgba(116, 145, 216, 0.08), transparent 55%);
-  animation: drift 28s ease-in-out infinite;
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.orbit {
-  position: absolute;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  inset: 50% 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.7;
-  pointer-events: none;
-  filter: blur(0.2px);
-}
-
-.orbit-pivot { width: 90px; height: 90px; opacity: 0.35; }
-.orbit-noyau { width: 220px; height: 220px; }
-.orbit-peripherie { width: 320px; height: 320px; opacity: 0.4; }
-
-.word {
-  --scale: 1;
-  position: absolute;
-  left: var(--x, 50%);
-  top: var(--y, 50%);
-  transform: translate(-50%, -50%) scale(var(--scale));
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: #eaf2ff;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  transition: transform 0.4s ease, opacity 0.4s ease, filter 0.4s ease, font-size 0.4s ease;
-}
-
-.word.pivot {
-  font-size: clamp(20px, 4vw, 36px);
-  font-weight: 800;
-  padding: 10px 14px;
-  background: rgba(109, 176, 255, 0.18);
-  border-color: rgba(109, 176, 255, 0.55);
-  box-shadow: 0 0 18px rgba(109, 176, 255, 0.35);
-  animation: halo 6s ease-in-out infinite;
-}
-
-.word.noyau {
-  font-size: clamp(16px, 3vw, 26px);
-  font-weight: 700;
-  background: rgba(140, 121, 255, 0.16);
-  border-color: rgba(140, 121, 255, 0.4);
-}
-
-.word.peripherie {
-  font-size: clamp(13px, 2.6vw, 20px);
-  font-weight: 600;
-  opacity: 0;
-  animation: fadeInPop 0.9s ease forwards;
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .graph-node[data-category="pivot"] { fill: var(--pivot); }
 .graph-node[data-category="noyau"] { fill: var(--noyau); }
 .graph-node[data-category="peripherie"] { fill: var(--peripherie); }
 .graph-node[data-category="pivot"] ~ .graph-label { fill: #eaf2ff; font-weight: 700; }
 
-.graph-shell.metaphor-brume { filter: blur(0.4px) saturate(0.85); border-color: rgba(131, 167, 210, 0.35); }
-.graph-shell.metaphor-orage { filter: saturate(1.05) brightness(0.9); border-color: rgba(140, 46, 46, 0.55); animation: shakeStorm 12s ease-in-out infinite; }
-.graph-shell.metaphor-eclaircie { filter: brightness(1.05); border-color: rgba(255, 219, 120, 0.45); box-shadow: 0 0 30px rgba(255, 219, 120, 0.18); }
-
-.placeholder {
-  color: var(--muted);
-  opacity: 0.7;
-  font-style: italic;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.word-expiring {
-  animation: fadeOutSoft 1.2s ease forwards;
-  filter: blur(2px);
-}
-
-/* Metaphor themes */
-.wordcloud.metaphor-brume {
-  background: radial-gradient(circle at 20% 30%, rgba(132, 160, 210, 0.22), rgba(12, 18, 35, 0.9)),
-              linear-gradient(160deg, rgba(66, 78, 104, 0.26), rgba(8, 12, 25, 0.92));
-  border-color: rgba(131, 167, 210, 0.35);
-  backdrop-filter: blur(3px) saturate(0.9);
-}
-
-.wordcloud.metaphor-brume .word { filter: drop-shadow(0 0 8px rgba(140, 180, 240, 0.25)); }
-
-.wordcloud.metaphor-orage {
-  background: radial-gradient(circle at 10% 20%, rgba(255, 200, 200, 0.08), transparent 45%),
-              linear-gradient(135deg, rgba(90, 25, 25, 0.6), rgba(10, 8, 14, 0.94));
-  border-color: rgba(140, 46, 46, 0.55);
-  animation: pulseStorm 8s ease-in-out infinite, shakeStorm 12s ease-in-out infinite;
-}
-
-.wordcloud.metaphor-orage .word { animation: tremble 2s ease-in-out infinite; }
-
-.wordcloud.metaphor-eclaircie {
-  background: radial-gradient(circle at 30% 30%, rgba(255, 231, 140, 0.25), rgba(255, 245, 196, 0.05)),
-              linear-gradient(120deg, rgba(255, 231, 140, 0.18), rgba(255, 245, 196, 0.12));
-  border-color: rgba(255, 219, 120, 0.45);
-  box-shadow: 0 0 40px rgba(255, 213, 140, 0.15);
-}
-
-.wordcloud.metaphor-eclaircie .word { color: #ffe89a; box-shadow: 0 0 12px rgba(255, 228, 154, 0.3); animation: expandGlow 7s ease-in-out infinite; }
-
-@keyframes drift {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(4deg) scale(1.05); }
-}
-
-@keyframes halo { 0%, 100% { box-shadow: 0 0 14px rgba(109, 176, 255, 0.28); } 50% { box-shadow: 0 0 24px rgba(109, 176, 255, 0.45); } }
-@keyframes fadeInPop { 0% { opacity: 0; transform: translateY(6px) scale(0.96); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes fadeOutSoft { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-6px) scale(0.94); } }
-@keyframes tremble { 0%, 100% { transform: translate(0); } 20% { transform: translate(-1px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-0.5px, 0.5px); } 80% { transform: translate(0.5px, -0.5px); } }
-@keyframes pulseStorm { 0%, 100% { filter: saturate(0.9); } 50% { filter: saturate(1.1) brightness(1.05); } }
-@keyframes expandGlow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 @keyframes shakeStorm { 0%, 100% { transform: translate(0); } 45% { transform: translate(-3px, 2px); } 55% { transform: translate(3px, -1px); } }
