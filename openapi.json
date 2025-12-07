@@ -1,0 +1,67 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "API Echo Resonante",
+    "version": "1.0.0",
+    "description": "Analyse lexicale deterministe et generation d'echo poetic-compatible GPT actions"
+  },
+  "paths": {
+    "/api/echo": {
+      "post": {
+        "operationId": "postEcho",
+        "summary": "Analyse un message et renvoie un echo resonance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string" },
+                  "debug": { "type": "boolean" }
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Echo resonance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pivot": { "type": "string", "nullable": true },
+                    "noyau": { "type": "array", "items": { "type": "string" } },
+                    "peripherie": { "type": "array", "items": { "type": "string" } },
+                    "cooccurrences": { "type": "object", "additionalProperties": { "type": "integer" } },
+                    "tags": { "type": "array", "items": { "type": "string" } },
+                    "metaphore": { "type": "string" },
+                    "question_rebond": { "type": "string" },
+                    "suggestions_poetiques": { "type": "array", "items": { "type": "string" } },
+                    "ciel_etoile": { "type": "array", "items": { "type": "object", "properties": { "emoji": { "type": "string" }, "label": { "type": "string" } } } },
+                    "comptage": {
+                      "type": "object",
+                      "properties": {
+                        "total": { "type": "integer" },
+                        "pivot": { "type": "integer" },
+                        "repartition": { "type": "object", "additionalProperties": { "type": "integer" } }
+                      }
+                    },
+                    "cache_hit": { "type": "boolean" },
+                    "usage_stats": { "type": "object", "properties": { "total_calls": { "type": "integer" } } },
+                    "temps_execution_ms": { "type": "number" },
+                    "debug": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Message manquant" }
+        }
+      }
+    }
+  }
+}
