@@ -2,100 +2,75 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API ÉCHO",
-    "version": "1.0.0",
-    "description": "Analyse textuelle résonante pour générer pivot, orbites et métaphore. Prête pour ChatGPT Actions."
+    "version": "2.0.0",
+    "description": "Analyse statistique locale sans IA générative, conçue pour ChatGPT Actions."
   },
   "servers": [
-    {
-      "url": "https://resonanceia.vercel.app",
-      "description": "Déploiement Vercel"
-    },
-    {
-      "url": "http://localhost:3000",
-      "description": "Développement local"
-    }
+    { "url": "https://resonanceia.vercel.app", "description": "Déploiement Vercel" },
+    { "url": "http://localhost:3000", "description": "Développement local" }
   ],
   "paths": {
     "/api/echo": {
       "post": {
-        "summary": "Analyse un texte et renvoie la constellation résonante",
+        "summary": "Analyse un message et renvoie pivot, noyau, périphérie et écho poétique.",
         "operationId": "postEcho",
-          "parameters": [
-            {
-              "name": "token",
-              "in": "query",
-              "required": false,
-              "description": "Token simple pour accéder à l'API (optionnel)",
-              "schema": { "type": "string" }
-            }
-          ],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string",
-                      "description": "Texte ou message à analyser"
-                    },
-                    "message": {
-                      "type": "string",
-                      "description": "Alias de text, accepté par les intégrations GPT"
-                    }
-                  },
-                  "oneOf": [
-                    { "required": ["text"] },
-                    { "required": ["message"] }
-                  ]
-                }
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Texte utilisateur à analyser"
+                  }
+                },
+                "required": ["message"]
               }
             }
-          },
+          }
+        },
         "responses": {
           "200": {
             "description": "Analyse réussie",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EchoResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/EchoResponse" }
               }
             }
           },
-          "400": {
-            "description": "Requête invalide"
-          },
-          "405": {
-            "description": "Méthode non supportée"
-          }
+          "400": { "description": "Requête invalide" },
+          "405": { "description": "Méthode non supportée" }
         }
       }
     }
   },
   "components": {
     "schemas": {
-      "Orbit": {
-        "type": "object",
-        "properties": {
-          "mot": { "type": "string" },
-          "force": { "type": "integer" }
-        }
-      },
       "EchoResponse": {
         "type": "object",
         "properties": {
           "pivot": { "type": "string" },
-          "orbites": {
+          "noyau": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Orbit" }
+            "items": { "type": "string" },
+            "description": "Top 3 des co-occurrences du pivot"
           },
-          "freqPivot": { "type": "integer" },
+          "peripherie": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Autres mots uniques"
+          },
+          "cooccurrences": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" },
+            "description": "Comptes de co-occurrence pour le pivot"
+          },
           "centralite": { "type": "integer" },
-          "variation": { "type": "integer" },
           "metaphore": { "type": "string" },
-          "constellation": {
+          "echo": { "type": "string" },
+          "tags": {
             "type": "array",
             "items": { "type": "string" }
           }
