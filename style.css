@@ -109,7 +109,35 @@ pre {
 }
 
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: center; }
+.row.dense { gap: 14px; }
 label { font-size: 13px; color: var(--muted); }
+
+.pill-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #2a3348;
+  background: #111726;
+  color: #dce5ff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  width: auto;
+}
+
+.pill:hover { transform: translateY(-1px); border-color: rgba(122, 107, 255, 0.4); }
+.pill.is-active { border-color: rgba(122, 107, 255, 0.8); box-shadow: 0 0 0 6px rgba(122, 107, 255, 0.12); background: linear-gradient(120deg, rgba(122, 107, 255, 0.15), rgba(74, 139, 255, 0.18)); }
+
+input[type="range"] {
+  accent-color: var(--accent);
+  width: 100%;
+  margin-top: 8px;
+}
 
 .toggle-row {
   display: grid;

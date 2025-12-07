@@ -24,6 +24,21 @@
       </button>
       <span class="small" id="dataMode">Mode API: —</span>
     </div>
+    <div class="row dense" aria-label="Réglages de résonance">
+      <div>
+        <label for="resonanceMode">Mode de formulation</label>
+        <div id="resonanceMode" class="pill-group" role="group" aria-label="Mode de formulation">
+          <button type="button" class="pill is-active" data-mode="raw">Chat brut</button>
+          <button type="button" class="pill" data-mode="enriched">Résonance enrichie</button>
+        </div>
+        <p class="small">Choisis entre le message brut ou un prompt résonant avant envoi à Gemma.</p>
+      </div>
+      <div>
+        <label for="poetryLevel">Niveau de poétisation</label>
+        <input type="range" id="poetryLevel" min="0" max="2" step="1" value="1" />
+        <div class="small" id="poetryLabel">Léger — phrases plus souples</div>
+      </div>
+    </div>
     <textarea id="msg" placeholder="Écris ce qui te traverse..."></textarea>
     <div class="row">
       <div>

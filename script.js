@@ -16,11 +16,17 @@ const nebiusOutputEl = document.getElementById('nebiusOutput');
 const modeToggleBtn = document.getElementById('modeToggle');
 const graphContainerEl = document.getElementById('graph-container');
 const graphSvg = document.getElementById('resonantGraph');
+const resonanceModeEl = document.getElementById('resonanceMode');
+const poetryLevelInput = document.getElementById('poetryLevel');
+const poetryLabel = document.getElementById('poetryLabel');
 
 // --- MOCK API REPLACEMENT FOR DEV --- //
 const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 let USE_MOCK = isLocalhost;
 let ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est configurée côté serveur
+let RESONANCE_MODE = 'raw';
+
+const resonanceHistory = [];
 
 let mockMemory = {}; // {mot: count}
 
@@ -36,6 +42,24 @@ Tu reformules, explores, questionnes ce qui résonne.
 Tu ne mentionnes jamais être un modèle.
 Tu ne produis aucune phrase contenant : 'je dois', 'je vais', 'okay the user', 'as a model'.`;
 
+const METAPHOR_IMAGES = {
+  brume: [
+    "comme une brume légère qui tarde à se lever",
+    "une nappe de brouillard qui adoucit les contours",
+    "un voile pâle suspendu entre le dedans et le dehors",
+  ],
+  orage: [
+    "comme un orage qui gronde derrière la colline",
+    "un ciel chargé d'étincelles et de tension sourde",
+    "des nuages lourds prêts à éclater en éclairs bleutés",
+  ],
+  eclaircie: [
+    "comme une éclaircie dorée après la pluie",
+    "un souffle tiède qui entrouvre les nuages",
+    "des rais de lumière qui filent entre les branches",
+  ],
+};
+
 function normalizeWord(word) {
   return word
     .normalize('NFD')
@@ -45,6 +69,105 @@ function normalizeWord(word) {
 
 function isStopword(word) {
   return FRENCH_STOPWORDS.has(word);
+}
+
+function pickFromArray(list = []) {
+  if (!Array.isArray(list) || list.length === 0) return '';
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function describePoetryLevel(level = 1) {
+  if (level === 0) return 'ton neutre, phrases contenues';
+  if (level === 2) return 'registre hypno-poétique, images étoffées, phrases allongées';
+  return 'légère musicalité, quelques images souples';
+}
+
+function buildMetaphorLine(metaphor, level = 1) {
+  const allowed = Object.keys(METAPHOR_IMAGES);
+  const key = allowed.includes(metaphor) ? metaphor : 'brume';
+  const base = pickFromArray(METAPHOR_IMAGES[key]) || 'comme un souffle discret.';
+  if (level === 0) return base;
+  if (level === 2) return `${base}, aux contours qui s'étirent et se teintent de reflets mouvants.`;
+  return `${base}, avec une douceur feutrée.`;
+}
+
+function buildNarrativeEcho(pivot, level = 1) {
+  if (!pivot) {
+    return 'Ces mots flottent sans ancre précise, comme un courant qui cherche sa rive.';
+  }
+
+  const stem = `Ces mots semblent tourner autour de «${pivot}»`;
+  if (level === 0) return `${stem}, en cercle calme.`;
+  if (level === 2) return `${stem}, traçant des volutes lentes qui tressent un halo vibrant autour de ce terme.`;
+  return `${stem}, comme un souffle qui insiste doucement.`;
+}
+
+function buildOpenQuestion(pivot) {
+  if (!pivot) return "Qu'est-ce qui cherche à se dire juste derrière ces mots ?";
+  return `Qu'est-ce qui frémit derrière «${pivot}», à peine formulé ?`;
+}
+
+function summarizeResonance(history = []) {
+  const recent = history.slice(-3).filter((item) => item && (item.pivot || (item.noyau || []).length));
+  if (recent.length === 0) return 'Pivots récurrents : (pas encore de résonance).\nTrame émergente : une page encore blanche.';
+
+  const pivotCounts = recent.reduce((acc, item) => {
+    if (item.pivot) acc[item.pivot] = (acc[item.pivot] || 0) + 1;
+    return acc;
+  }, {});
+  const topPivots = Object.entries(pivotCounts)
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .slice(0, 3)
+    .map(([pivot]) => pivot);
+
+  const noyauTerms = new Set();
+  recent.forEach((item) => {
+    (item.noyau || []).slice(0, 3).forEach((n) => noyauTerms.add(n));
+  });
+
+  const line1 = topPivots.length
+    ? `Pivots récurrents : ${topPivots.join(', ')}.`
+    : 'Pivots récurrents : encore indécis.';
+
+  const line2 = recent.find((item) => item.resume_courant)?.resume_courant
+    || (noyauTerms.size ? `Trame émergente : ${Array.from(noyauTerms).join(', ')}.` : 'Trame émergente : en murmure.');
+
+  return `${line1}\n${line2}`;
+}
+
+function buildPrompt(dataEcho = {}, userMessage = '', options = {}) {
+  const { history = [], poetryLevel = 1 } = options;
+  const summary = summarizeResonance(history);
+  const narrativeEcho = buildNarrativeEcho(dataEcho?.pivot, poetryLevel);
+  const metaphorLine = buildMetaphorLine(dataEcho?.metaphor, poetryLevel);
+  const openQuestion = buildOpenQuestion(dataEcho?.pivot);
+  const poetryDescriptor = describePoetryLevel(poetryLevel);
+
+  return `------------------------------------------------------
+CONTEXTE DES RÉSONANCES PRÉCÉDENTES :
+${summary}
+
+ÉCHO NARRATIF :
+${narrativeEcho}
+
+IMAGE MÉTAPHORIQUE :
+${metaphorLine}
+
+QUESTION D'OUVERTURE :
+${openQuestion}
+
+PAROLE DÉPOSÉE :
+"${userMessage}"
+
+RÉPONDS :
+- en français
+- avec nuance (${poetryDescriptor})
+- en 6 à 12 lignes
+- en phrases complètes, imagées, mais lisibles
+- sans méta-commentaire
+- sans te référer à toi-même
+- sans donner de conseils ni solutions
+------------------------------------------------------`;
 }
 
 function mock(message) {
@@ -191,6 +314,22 @@ function setToggleState(useNebius) {
   modeToggleBtn.classList.toggle('is-on', useNebius);
 }
 
+function setResonanceMode(mode) {
+  RESONANCE_MODE = mode === 'enriched' ? 'enriched' : 'raw';
+  if (!resonanceModeEl) return;
+  resonanceModeEl.querySelectorAll('.pill').forEach((btn) => {
+    const isActive = btn.dataset.mode === RESONANCE_MODE;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+}
+
+function setPoetryLabel(level = 1) {
+  if (!poetryLabel) return;
+  const descriptions = ['Neutre — phrases concises', 'Léger — phrases plus souples', 'Hypno — images dilatées'];
+  poetryLabel.textContent = descriptions[level] || descriptions[1];
+}
+
 function computeNebiusStatusLabel() {
   return ENABLE_NEBIUS
     ? 'Nebius activé — clé API détectée'
@@ -246,6 +385,7 @@ function toggleDebugPanels(show) {
 
 function resetConversation() {
   conversation.length = 0;
+  resonanceHistory.length = 0;
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
   setStatus('Prêt à dialoguer (modèle google/gemma-2-2b-it).');
@@ -631,6 +771,23 @@ function friendlyNebiusError(error) {
   return message;
 }
 
+function pushResonanceHistory(data) {
+  if (!data) return;
+  resonanceHistory.push(data);
+  if (resonanceHistory.length > 12) {
+    resonanceHistory.shift();
+  }
+}
+
+function renderEchoData(data, origin = '/api/echo') {
+  if (!data) return;
+  const originLabel = data.mock ? 'MOCK local' : origin;
+  echoPanel.textContent = `Source: ${originLabel}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
+  updateWordCloudFromEcho(data);
+  updateGraphFromEcho(data);
+  pushResonanceHistory(data);
+}
+
 async function callNebiusChat(payload) {
   if (!ENABLE_NEBIUS) {
     return { reply: '(simulation Nebius)', model: 'Nebius (mock local)', mock: true };
@@ -683,15 +840,14 @@ async function callResonanceAPI(message) {
   return res.json();
 }
 
-async function updateEcho(message) {
+async function updateEcho(message, existingData = null) {
   try {
-    const data = await callResonanceAPI(message);
-    const origin = data.mock ? 'MOCK local' : '/api/echo';
-    echoPanel.textContent = `Source: ${origin}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
-    updateWordCloudFromEcho(data);
-    updateGraphFromEcho(data);
+    const data = existingData || await callResonanceAPI(message);
+    renderEchoData(data, existingData ? 'Réemploi' : '/api/echo');
+    return data;
   } catch (error) {
     echoPanel.textContent = 'Analyse impossible: ' + error.message;
+    return null;
   }
 }
 
@@ -715,8 +871,30 @@ async function sendMessage() {
   setStatus(ENABLE_NEBIUS ? '⏳ Envoi au modèle Nebius...' : '⏳ Réponse simulée (Nebius désactivé)...');
   sendBtn.disabled = true;
 
+  const poetryLevel = Number(poetryLevelInput?.value) || 1;
+  let echoData = null;
+  try {
+    echoData = await callResonanceAPI(content);
+    renderEchoData(echoData);
+  } catch (error) {
+    echoPanel.textContent = 'Analyse impossible: ' + error.message;
+  }
+
+  const useResonantPrompt = RESONANCE_MODE === 'enriched' && echoData;
+  const enrichedMessage = useResonantPrompt
+    ? buildPrompt(echoData, content, { history: resonanceHistory, poetryLevel })
+    : content;
+
+  const messagesForModel = conversation.map((entry, idx) => {
+    const isLastUser = idx === conversation.length - 1 && entry.role === 'user';
+    if (useResonantPrompt && isLastUser) {
+      return { ...entry, content: enrichedMessage };
+    }
+    return entry;
+  });
+
   const payload = {
-    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversation],
+    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messagesForModel],
     temperature: Number(temperatureInput.value) || 0.7,
     top_p: Number(topPInput.value) || 0.9,
     max_tokens: Number(maxTokensInput.value) || 256,
@@ -734,7 +912,9 @@ async function sendMessage() {
     setStatus(statusText);
     displayNebiusStatus(data.mock ? computeNebiusStatusLabel() : 'Nebius activé — clé API présente');
     displayNebiusOutput(data);
-    updateEcho(content);
+    if (!echoData) {
+      updateEcho(content);
+    }
   } catch (error) {
     const friendly = friendlyNebiusError(error);
     setStatus('❌ ' + friendly);
@@ -766,8 +946,25 @@ if (modeToggleBtn) {
   modeToggleBtn.addEventListener('click', toggleApiMode);
 }
 
+if (resonanceModeEl) {
+  resonanceModeEl.addEventListener('click', (event) => {
+    const btn = event.target.closest('.pill');
+    if (!btn) return;
+    setResonanceMode(btn.dataset.mode);
+  });
+}
+
+if (poetryLevelInput) {
+  setPoetryLabel(Number(poetryLevelInput.value) || 1);
+  poetryLevelInput.addEventListener('input', (event) => {
+    const level = Number(event.target.value) || 1;
+    setPoetryLabel(level);
+  });
+}
+
 setPlaceholderVisibility();
 renderHistory();
+setResonanceMode(RESONANCE_MODE);
 bootstrapRuntimeConfig().finally(() => resetConversation());
 setInterval(cleanupWords, 2000);
 requestAnimationFrame(animateWords);
