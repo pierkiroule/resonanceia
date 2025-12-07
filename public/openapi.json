@@ -20,23 +20,39 @@
       "post": {
         "summary": "Analyse un texte et renvoie la constellation résonante",
         "operationId": "postEcho",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "text": {
-                    "type": "string",
-                    "description": "Texte en français à analyser pour identifier le pivot et les orbites"
-                  }
-                },
-                "required": ["text"]
+          "parameters": [
+            {
+              "name": "token",
+              "in": "query",
+              "required": false,
+              "description": "Token simple pour accéder à l'API (optionnel)",
+              "schema": { "type": "string" }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "description": "Texte ou message à analyser"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Alias de text, accepté par les intégrations GPT"
+                    }
+                  },
+                  "oneOf": [
+                    { "required": ["text"] },
+                    { "required": ["message"] }
+                  ]
+                }
               }
             }
-          }
-        },
+          },
         "responses": {
           "200": {
             "description": "Analyse réussie",

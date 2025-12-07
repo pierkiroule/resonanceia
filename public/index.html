@@ -166,6 +166,20 @@
 
   <main>
     <section>
+      <h2>Comment ça marche ?</h2>
+      <p style="line-height: 1.6; margin: 0 0 10px; color: #3a3a3c;">
+        Configure ton filtre de résonance en quelques clics, génère automatiquement un JSON compatible GPT
+        Builder, puis importe-le dans ChatGPT pour créer ta propre IA ÉCHO. Aucun compte supplémentaire, aucune base de données,
+        tout reste dans ton navigateur.
+      </p>
+      <ul style="padding-left: 18px; line-height: 1.5; color: #3a3a3c; margin: 0;">
+        <li>Sélectionne les intentions, le public, le style et l’intensité.</li>
+        <li>Ajoute un nom de filtre et un token d’accès API (prototype si fourni par l’équipe).</li>
+        <li>Génère l’URL API prête et télécharge ton fichier de configuration GPT.</li>
+      </ul>
+    </section>
+
+    <section>
       <h2>1. L’IA invitera surtout la personne à…</h2>
       <div class="options" id="intentions">
         <div class="option"><input type="checkbox" id="exprimer" value="exprimer"><label for="exprimer">✍ Mettre en mots ce qui la traverse</label></div>
@@ -219,6 +233,11 @@
       </div>
 
       <div class="field">
+        <label for="apiToken">Token API (optionnel, peut venir de l’URL ?token=...)</label>
+        <input type="text" id="apiToken" placeholder="PROTOTYPE_SECRET" />
+      </div>
+
+      <div class="field">
         <h2>Aperçu en direct</h2>
         <div id="preview">Sélectionne des options pour voir le filtre se dessiner.</div>
       </div>
@@ -227,6 +246,7 @@
         <button id="generateBtn">Générer ma configuration ÉCHO</button>
         <button class="secondary" id="copyJsonBtn">Copier le JSON</button>
         <button class="secondary" id="copyUrlBtn">Copier l’URL</button>
+        <button id="downloadGptBtn" class="secondary">📥 Télécharger ma configuration GPT</button>
       </div>
 
       <div class="field">
@@ -237,6 +257,26 @@
       <div class="field">
         <h2>URL API prête</h2>
         <code id="urlOutput">—</code>
+      </div>
+    </section>
+
+    <section>
+      <h2>Guide express (PDF) et exemple GPT</h2>
+      <p style="line-height: 1.6; margin-top: 0; color: #3a3a3c;">
+        Télécharge le PDF pour installer ton GPT ÉCHO en 2 minutes, ou copie l’exemple JSON prêt à importer dans GPT Builder.
+      </p>
+      <div class="actions">
+        <a href="/guide-gpt-echo.pdf" download style="text-decoration: none;">
+          <button type="button">📄 Télécharger le guide PDF</button>
+        </a>
+      </div>
+      <div class="field">
+        <h3>Exemple de fichier GPT généré</h3>
+        <pre id="gptExample"></pre>
+      </div>
+      <div class="field">
+        <h3>Texte UX pour la première réponse du GPT</h3>
+        <p id="firstReply" style="background:#fff; padding:12px; border-radius:10px; border:1px solid #ececf0; line-height:1.6; color:#222; margin:0;"></p>
       </div>
     </section>
   </main>
@@ -251,6 +291,13 @@
       publics: ['individuel', 'famille', 'couple', 'groupe', 'scolaire', 'pro', 'therapie', 'entre_seances'],
       styles: ['neutre', 'empathique', 'psycho', 'socratique', 'symbolique', 'corporel', 'poetique']
     };
+
+    function getTokenFromPage() {
+      const fromField = document.getElementById('apiToken').value.trim();
+      if (fromField) return fromField;
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('token') || '';
+    }
 
     function getSelectedValues(groupName) {
       return groups[groupName]
@@ -289,11 +336,15 @@
       if (config.styles.length) params.set('styles', config.styles.join(','));
       if (config.intensite) params.set('intensite', config.intensite);
       if (config.nom) params.set('nom', config.nom);
-      return `${BASE_API_URL}?${params.toString()}`;
+      const token = getTokenFromPage();
+      if (token) params.set('token', token);
+      const qs = params.toString();
+      return qs ? `${BASE_API_URL}?${qs}` : BASE_API_URL;
     }
 
     function saveToLocalStorage(config) {
-      localStorage.setItem('echoConfig', JSON.stringify(config));
+      const token = getTokenFromPage();
+      localStorage.setItem('echoConfig', JSON.stringify({ ...config, token }));
     }
 
     function loadFromLocalStorage() {
@@ -319,6 +370,9 @@
         }
         if (saved.nom) {
           document.getElementById('filterName').value = saved.nom;
+        }
+        if (saved.token) {
+          document.getElementById('apiToken').value = saved.token;
         }
       } catch (err) {
         console.warn('Impossible de relire la configuration stockée', err);
@@ -346,6 +400,78 @@
       return { config, url, jsonText };
     }
 
+    function formatList(list) {
+      return list.length ? list.join(', ') : 'non précisé';
+    }
+
+    function generateSystemPrompt(config) {
+      const parts = [
+        'Tu fonctionnes dans l\'Espace de l\'Écho : pas d\'interprétation pathologique, tu renvoies un écho clair.',
+        `Intentions privilégiées : ${formatList(config.intentions)}.`,
+        `Style recherché : ${formatList(config.styles)}.`,
+        `Intensité de résonance : ${config.intensite || 'non précisée'} (légère, modérée ou haute).`,
+        'Tu invites l\'expression, tu reformules, tu poses des relances douces. Si le filtre le suggère, tu peux te permettre une coloration symbolique ou poétique.',
+        'Tu n\'es pas un thérapeute : tu facilites la réflexion et l\'apaisement.',
+        "Utilise l'action API 'echo' pour produire l'écho principal et garde un ton soigné, centré sur la personne."
+      ];
+      return parts.join(' ');
+    }
+
+    function buildGptConfig(config, url) {
+      const safeNom = config.nom ? config.nom : 'ÉCHO';
+      const description = `GPT configuré dans l'Espace de l'Écho pour : ${formatList(config.intentions)} · ${formatList(config.styles)} · ${formatList(config.publics)}.`;
+      const systemPrompt = generateSystemPrompt(config);
+      const firstReply = 'Bienvenue dans l’Espace de l’Écho. Raconte-moi ce qui te traverse, je te répondrai en résonance, sans interpréter.';
+
+      const gptConfig = {
+        name: `IA ÉCHO – ${safeNom}`,
+        description,
+        instructions: systemPrompt,
+        conversation_starters: [
+          {
+            title: 'Exprimer ce qui traverse',
+            message: 'Qu’est-ce qui t’habite en ce moment ?'
+          }
+        ],
+        actions: [
+          {
+            name: 'echo',
+            url,
+            method: 'POST',
+            input_schema: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' }
+              },
+              required: ['message']
+            }
+          }
+        ],
+        __first_reply_hint: firstReply
+      };
+
+      return { gptConfig, systemPrompt, firstReply };
+    }
+
+    function downloadGptConfig() {
+      const { config, url } = generateConfig();
+      const { gptConfig, systemPrompt, firstReply } = buildGptConfig(config, url);
+      const fileName = `GPT-Filtre-Echo-${config.nom || 'Echo'}.json`;
+      const blob = new Blob([JSON.stringify(gptConfig, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      document.getElementById('gptExample').textContent = JSON.stringify(gptConfig, null, 2);
+      document.getElementById('firstReply').textContent = firstReply;
+      document.getElementById('jsonOutput').textContent = JSON.stringify(config, null, 2);
+      document.getElementById('urlOutput').textContent = url;
+      document.getElementById('preview').textContent = generateSystemPrompt(config);
+      return { systemPrompt, firstReply };
+    }
+
     function copyToClipboard(text) {
       if (!text) return;
       navigator.clipboard.writeText(text).catch(() => alert('Copie impossible dans ce navigateur.'));
@@ -370,11 +496,34 @@
         const { url } = generateConfig();
         copyToClipboard(url);
       });
+
+      document.getElementById('downloadGptBtn').addEventListener('click', () => {
+        const { systemPrompt } = downloadGptConfig();
+        copyToClipboard(systemPrompt);
+      });
+    }
+
+    function hydrateFromQueryToken() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        const input = document.getElementById('apiToken');
+        input.value = token;
+      }
+    }
+
+    function bootstrapExample() {
+      const { config, url } = generateConfig();
+      const { gptConfig, firstReply } = buildGptConfig(config, url);
+      document.getElementById('gptExample').textContent = JSON.stringify(gptConfig, null, 2);
+      document.getElementById('firstReply').textContent = firstReply;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       loadFromLocalStorage();
+      hydrateFromQueryToken();
       attachListeners();
+      bootstrapExample();
       updatePreview();
     });
   </script>

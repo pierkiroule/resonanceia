@@ -236,13 +236,13 @@ async function saveState({ matrix, freq, history }) {
 
 function getTextFromRequest(req) {
   if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-    return req.body.text;
+    return req.body.text || req.body.message;
   }
 
   if (typeof req.body === 'string') {
     try {
       const parsed = JSON.parse(req.body);
-      return parsed?.text;
+      return parsed?.text || parsed?.message;
     } catch {
       return undefined;
     }
@@ -250,6 +250,10 @@ function getTextFromRequest(req) {
 
   if (req.query?.text) {
     return req.query.text;
+  }
+
+  if (req.query?.message) {
+    return req.query.message;
   }
 
   return undefined;
@@ -270,7 +274,7 @@ export default async function handler(req, res) {
 
   const text = getTextFromRequest(req);
   if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Champ "text" requis dans le corps JSON ou en query string.' });
+    return res.status(400).json({ error: 'Champ "text" ou "message" requis dans le corps JSON ou en query string.' });
   }
 
   const tokens = tokenize(text);
