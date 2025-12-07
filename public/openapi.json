@@ -3,7 +3,7 @@
   "info": {
     "title": "API ÉCHO",
     "version": "1.0.0",
-    "description": "Analyse textuelle frugale (Courtial & Callon) pour extraire pivot, cooccurrences, noyau et périphérie. Aucune IA externe."
+    "description": "Analyse textuelle résonante pour générer pivot, orbites et métaphore. Prête pour ChatGPT Actions."
   },
   "servers": [
     {
@@ -18,8 +18,17 @@
   "paths": {
     "/api/echo": {
       "post": {
-        "summary": "Analyse un texte et renvoie le pivot, le noyau et la périphérie",
+        "summary": "Analyse un texte et renvoie la constellation résonante",
         "operationId": "postEcho",
+          "parameters": [
+            {
+              "name": "token",
+              "in": "query",
+              "required": false,
+              "description": "Token simple pour accéder à l'API (optionnel)",
+              "schema": { "type": "string" }
+            }
+          ],
           "requestBody": {
             "required": true,
             "content": {
@@ -27,18 +36,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": {
+                    "text": {
                       "type": "string",
                       "description": "Texte ou message à analyser"
                     },
-                    "text": {
+                    "message": {
                       "type": "string",
-                      "description": "Alias de message pour compatibilité"
+                      "description": "Alias de text, accepté par les intégrations GPT"
                     }
                   },
                   "oneOf": [
-                    { "required": ["message"] },
-                    { "required": ["text"] }
+                    { "required": ["text"] },
+                    { "required": ["message"] }
                   ]
                 }
               }
@@ -67,26 +76,26 @@
   },
   "components": {
     "schemas": {
+      "Orbit": {
+        "type": "object",
+        "properties": {
+          "mot": { "type": "string" },
+          "force": { "type": "integer" }
+        }
+      },
       "EchoResponse": {
         "type": "object",
         "properties": {
           "pivot": { "type": "string" },
-          "noyau": {
+          "orbites": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": { "$ref": "#/components/schemas/Orbit" }
           },
-          "peripherie": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
+          "freqPivot": { "type": "integer" },
           "centralite": { "type": "integer" },
-          "delta": { "type": "string", "enum": ["stabilité", "variation"] },
-          "cooccurrences": {
-            "type": "object",
-            "additionalProperties": { "type": "integer" },
-            "description": "Clés au format pivot-mot"
-          },
-          "tags": {
+          "variation": { "type": "integer" },
+          "metaphore": { "type": "string" },
+          "constellation": {
             "type": "array",
             "items": { "type": "string" }
           }

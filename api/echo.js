@@ -1,3 +1,18 @@
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import path from 'path';
+
+// In-memory defaults to keep the analysis responsive between warm executions
+const MEMORY_STATE = {
+  matrix: {},
+  freq: {},
+  history: []
+};
+
+const DB_DIR = process.env.RESONANCE_DB_PATH || path.join(process.env.TMPDIR || '/tmp', 'resonanceia');
+const MATRIX_PATH = path.join(DB_DIR, 'matrix.json');
+const FREQ_PATH = path.join(DB_DIR, 'freq.json');
+const HISTORY_PATH = path.join(DB_DIR, 'history.json');
+
 const stopwordsFr = new Set([
   'alors', 'au', 'aucuns', 'aussi', 'autre', 'avant', 'avec', 'avoir', 'bon',
   'car', 'ce', 'cela', 'ces', 'ceux', 'chaque', 'ci', 'comme', 'comment',
@@ -15,8 +30,6 @@ const stopwordsFr = new Set([
   'été', 'être'
 ]);
 
-let previousPivot = '';
-
 function stripDiacritics(text) {
   return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
@@ -31,7 +44,7 @@ function tokenize(text = '') {
   return rawTokens.filter((token) => token.length > 1 && !stopwordsFr.has(token));
 }
 
-function countTokens(tokens = []) {
+function countLocal(tokens = []) {
   const counts = new Map();
   tokens.forEach((token) => {
     counts.set(token, (counts.get(token) || 0) + 1);
@@ -39,74 +52,209 @@ function countTokens(tokens = []) {
   return counts;
 }
 
-function selectPivot(counts = new Map()) {
-  let pivot = '';
-  let max = 0;
-  for (const [word, count] of counts.entries()) {
-    if (count > max) {
-      max = count;
-      pivot = word;
-    }
-  }
-  return pivot;
+function updateFrequencies(tokens = [], freq = {}) {
+  const updated = { ...freq };
+  tokens.forEach((token) => {
+    updated[token] = (updated[token] || 0) + 1;
+  });
+  return updated;
 }
 
-function buildCooccurrences(pivot, counts = new Map()) {
-  const cooccurrences = {};
-  if (!pivot) return cooccurrences;
-
-  for (const [word, count] of counts.entries()) {
-    if (word === pivot) continue;
-    cooccurrences[`${pivot}-${word}`] = count;
+function updateMatrix(tokens = [], matrix = {}) {
+  const updated = { ...matrix };
+  for (let i = 0; i < tokens.length; i += 1) {
+    const a = tokens[i];
+    for (let j = i + 1; j < tokens.length; j += 1) {
+      const b = tokens[j];
+      if (a === b) continue;
+      const first = updated[a] ? { ...updated[a] } : {};
+      const second = updated[b] ? { ...updated[b] } : {};
+      first[b] = (first[b] || 0) + 1;
+      second[a] = (second[a] || 0) + 1;
+      updated[a] = first;
+      updated[b] = second;
+    }
   }
-  return cooccurrences;
+  return updated;
 }
 
-function splitOrbits(cooccurrences = {}) {
-  const noyau = [];
-  const peripherie = [];
+function trimToTop(freq = {}, matrix = {}, limit = 200) {
+  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+  const top = sorted.slice(0, limit);
+  const kept = new Set(top.map(([word]) => word));
+  const trimmedFreq = Object.fromEntries(top);
+  const trimmedMatrix = {};
 
-  Object.entries(cooccurrences).forEach(([key, value]) => {
-    if (value > 1) {
-      noyau.push(key.split('-')[1]);
-    } else if (value === 1) {
-      peripherie.push(key.split('-')[1]);
-    }
+  kept.forEach((word) => {
+    const row = matrix[word] || {};
+    const filteredRow = {};
+    Object.entries(row).forEach(([other, value]) => {
+      if (kept.has(other)) {
+        filteredRow[other] = value;
+      }
+    });
+    trimmedMatrix[word] = filteredRow;
   });
 
-  return { noyau, peripherie };
+  return { freq: trimmedFreq, matrix: trimmedMatrix };
 }
 
-function buildTags(pivot, noyau = [], peripherie = []) {
-  const tags = new Set();
-  if (pivot) tags.add(pivot);
-  noyau.forEach((w) => w && tags.add(w));
-  peripherie.forEach((w) => w && tags.add(w));
-  return Array.from(tags);
+function calculateCentrality(matrix = {}) {
+  const centrality = {};
+  Object.entries(matrix).forEach(([word, connections]) => {
+    centrality[word] = Object.values(connections || {}).reduce((acc, val) => acc + val, 0);
+  });
+  return centrality;
 }
 
-function computeDelta(pivot) {
-  const delta = previousPivot && pivot === previousPivot ? 'stabilité' : previousPivot ? 'variation' : 'stabilité';
-  previousPivot = pivot;
-  return delta;
+function buildOrbits(pivot, matrix = {}) {
+  if (!pivot) return [];
+  const row = matrix[pivot] || {};
+  return Object.entries(row)
+    .map(([mot, force]) => ({ mot, force }))
+    .sort((a, b) => b.force - a.force);
 }
 
-function getMessage(req) {
+function selectPivot(tokens = [], centrality = {}, freq = {}) {
+  if (tokens.length) {
+    const localCounts = countLocal(tokens);
+    let selected = '';
+    let maxCount = -Infinity;
+    localCounts.forEach((value, key) => {
+      if (value > maxCount) {
+        maxCount = value;
+        selected = key;
+      }
+    });
+    if (selected) return selected;
+  }
+
+  const basis = Object.keys(centrality).length ? centrality : freq;
+  return Object.entries(basis).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+
+function computeDelta(pivot, centrality = {}, history = []) {
+  if (!pivot) return 0;
+  const previousCentrality = history.at(-1)?.centrality || {};
+  const prevValue = previousCentrality[pivot] || 0;
+  const current = centrality[pivot] || 0;
+  return current - prevValue;
+}
+
+function recordHistory(history = [], centrality = {}, freq = {}) {
+  const snapshot = {
+    timestamp: new Date().toISOString(),
+    centrality,
+    freq
+  };
+  const next = [...history, snapshot];
+  const MAX = 50;
+  return next.slice(-MAX);
+}
+
+function craftMetaphor(pivot, orbites = [], variation = 0) {
+  const orbitNames = orbites.slice(0, 5).map((o) => o.mot);
+  const orbitList = orbitNames.length ? orbitNames.join(', ') : 'aucune orbite immédiate';
+  const drift = variation > 0 ? 'brille davantage' : variation < 0 ? "s'atténue" : 'reste stable';
+
+  const metaphore = pivot
+    ? `Autour de "${pivot}", le tissu reste co-émergent : ${orbitList}. La résonance ${drift}.`
+    : 'Constellation en attente de premiers éclats.';
+
+  const constellation = [
+    '🌌 neutralité',
+    '🧭 co-émergent',
+    "✨ pas d'interprétation",
+    `🛰️ delta ${variation >= 0 ? '+' : ''}${variation}`,
+    pivot ? `🌠 pivot ${pivot}` : '🌠 pivot latent'
+  ];
+
+  return { metaphore, constellation };
+}
+
+async function ensureDir() {
+  await mkdir(DB_DIR, { recursive: true });
+}
+
+async function ensureFile(filePath, fallback) {
+  try {
+    await readFile(filePath, 'utf8');
+  } catch {
+    await writeFile(filePath, JSON.stringify(fallback, null, 2));
+  }
+}
+
+async function ensureStores() {
+  await ensureDir();
+  await Promise.all([
+    ensureFile(MATRIX_PATH, {}),
+    ensureFile(FREQ_PATH, {}),
+    ensureFile(HISTORY_PATH, [])
+  ]);
+}
+
+async function readJson(filePath) {
+  try {
+    const data = await readFile(filePath, 'utf8');
+    return JSON.parse(data || 'null');
+  } catch {
+    return null;
+  }
+}
+
+async function writeJson(filePath, data) {
+  await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+async function loadState() {
+  const [matrix, freq, history] = await Promise.all([
+    readJson(MATRIX_PATH),
+    readJson(FREQ_PATH),
+    readJson(HISTORY_PATH)
+  ]);
+
+  return {
+    matrix: matrix || { ...MEMORY_STATE.matrix },
+    freq: freq || { ...MEMORY_STATE.freq },
+    history: Array.isArray(history) ? history : [...MEMORY_STATE.history]
+  };
+}
+
+async function saveState({ matrix, freq, history }) {
+  MEMORY_STATE.matrix = matrix || {};
+  MEMORY_STATE.freq = freq || {};
+  MEMORY_STATE.history = history || [];
+
+  try {
+    await writeJson(MATRIX_PATH, MEMORY_STATE.matrix);
+    await writeJson(FREQ_PATH, MEMORY_STATE.freq);
+    await writeJson(HISTORY_PATH, MEMORY_STATE.history);
+  } catch (err) {
+    console.error('Impossible de persister les fichiers, utilisation du cache mémoire uniquement', err);
+  }
+}
+
+function getTextFromRequest(req) {
   if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-    return req.body.message || req.body.text;
+    return req.body.text || req.body.message;
   }
 
   if (typeof req.body === 'string') {
     try {
       const parsed = JSON.parse(req.body);
-      return parsed?.message || parsed?.text;
+      return parsed?.text || parsed?.message;
     } catch {
       return undefined;
     }
   }
 
-  if (req.query?.message) return req.query.message;
-  if (req.query?.text) return req.query.text;
+  if (req.query?.text) {
+    return req.query.text;
+  }
+
+  if (req.query?.message) {
+    return req.query.message;
+  }
 
   return undefined;
 }
@@ -116,40 +264,44 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Content-Type', 'application/json');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Méthode non supportée. Utilisez POST.' });
+    return res.status(405).json({ error: 'Méthode non supportée. Utilisez POST pour analyser un texte.' });
   }
 
-  const message = getMessage(req);
-  if (typeof message !== 'string') {
-    return res.status(400).json({ error: 'Champ "message" requis (ou alias "text").' });
+  const text = getTextFromRequest(req);
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Champ "text" ou "message" requis dans le corps JSON ou en query string.' });
   }
 
-  if (!message.trim()) {
-    return res.status(200).json({ echo: 'silence extérieur', tags: [] });
-  }
+  const tokens = tokenize(text);
+  await ensureStores();
+  const state = await loadState();
 
-  const tokens = tokenize(message);
-  if (!tokens.length) {
-    return res.status(200).json({ echo: 'silence extérieur', tags: [] });
-  }
+  let freq = updateFrequencies(tokens, state.freq);
+  let matrix = updateMatrix(tokens, state.matrix);
+  ({ freq, matrix } = trimToTop(freq, matrix));
 
-  const counts = countTokens(tokens);
-  const pivot = selectPivot(counts);
-  const cooccurrences = buildCooccurrences(pivot, counts);
-  const centralite = Object.values(cooccurrences).reduce((acc, val) => acc + val, 0);
-  const { noyau, peripherie } = splitOrbits(cooccurrences);
-  const tags = buildTags(pivot, noyau, peripherie);
-  const delta = computeDelta(pivot);
+  const centrality = calculateCentrality(matrix);
+  const pivot = selectPivot(tokens, centrality, freq);
+  const orbites = buildOrbits(pivot, matrix);
+  const freqPivot = pivot ? freq[pivot] || 0 : 0;
+  const variation = computeDelta(pivot, centrality, state.history);
+  const { metaphore, constellation } = craftMetaphor(pivot, orbites, variation);
+  const history = recordHistory(state.history, centrality, freq);
+
+  await saveState({ matrix, freq, history });
 
   return res.status(200).json({
     pivot,
-    noyau,
-    peripherie,
-    centralite,
-    delta,
-    cooccurrences,
-    tags
+    orbites,
+    freqPivot,
+    centralite: pivot ? centrality[pivot] || 0 : 0,
+    variation,
+    metaphore,
+    constellation
   });
 }

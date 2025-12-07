@@ -157,10 +157,10 @@
 </head>
 <body>
   <header>
-    <h1>API ÉCHO – Configure ton GPT résonant</h1>
+    <h1>API ÉCHO – transforme ton IA en IA résonante</h1>
     <p class="subtitle">
       Choisis ton intention, ton public, ton style de réponse et l’intensité de résonance.
-      Nous générons automatiquement trois blocs prêts à copier-coller dans GPT Builder : le Prompt Système ÉCHO, le Prompt de configuration et le YAML d’Action API.
+      Nous générons un prompt Système prêt à être collé dans GPT Builder (section “Instructions”) et une URL API ÉCHO prête à l’emploi.
     </p>
   </header>
 
@@ -168,14 +168,13 @@
     <section>
       <h2>Comment ça marche ?</h2>
       <p style="line-height: 1.6; margin: 0 0 10px; color: #3a3a3c;">
-        Configure ton filtre de résonance en quelques clics et récupère trois blocs prêts à coller dans GPT Builder :
-        Prompt Système, Prompt de configuration et YAML d’Action.
+        Configure ton filtre de résonance en quelques clics et récupère un prompt Système ÉCHO prêt à coller dans GPT Builder.
         Aucun compte supplémentaire, aucune base de données : tout reste dans ton navigateur.
       </p>
       <ul style="padding-left: 18px; line-height: 1.5; color: #3a3a3c; margin: 0;">
         <li>Sélectionne les intentions, le public, le style et l’intensité.</li>
-        <li>Ajoute un nom de filtre si besoin.</li>
-        <li>Copie le Prompt Système, le Prompt de configuration et le YAML pour l’Action.</li>
+        <li>Ajoute un nom de filtre et un token d’accès API (prototype si fourni par l’équipe).</li>
+        <li>Génère l’URL API prête et copie le prompt Système ÉCHO.</li>
       </ul>
     </section>
 
@@ -232,58 +231,51 @@
         <input type="text" id="filterName" placeholder="Filtre Ado, Burn-out, Groupe..." />
       </div>
 
-      <div class="actions">
-        <button id="generateBtn">Générer mes blocs ÉCHO</button>
-        <button class="secondary" id="copyPromptBtn">Copier le Prompt Système ÉCHO</button>
-        <button class="secondary" id="copyConfigBtn">Copier le Prompt de configuration</button>
-        <button class="secondary" id="copyYamlBtn">Copier le YAML Action</button>
+      <div class="field">
+        <label for="apiToken">Token API (optionnel, peut venir de l’URL ?token=...)</label>
+        <input type="text" id="apiToken" placeholder="PROTOTYPE_SECRET" />
       </div>
 
       <div class="field">
-        <h2>Résumé du filtre</h2>
+        <h2>Aperçu en direct</h2>
         <div id="preview">Sélectionne des options pour voir le filtre se dessiner.</div>
       </div>
-    </section>
 
-    <section>
-      <h2>Prompt Système ÉCHO</h2>
-      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Chaîne d’instructions à coller dans l’onglet “Instructions” du GPT Builder. Elle intègre automatiquement tes intentions, publics, styles et intensité.</p>
-      <textarea id="promptOutput" rows="12" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer ton prompt.</textarea>
-    </section>
-
-    <section>
-      <h2>Prompt de configuration GPT</h2>
-      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Texte prêt à coller dans une conversation avec le GPT Builder : il crée l’Action HTTP, colle le Prompt Système et nomme le GPT.</p>
-      <textarea id="configPromptOutput" rows="14" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer le prompt de configuration.</textarea>
-    </section>
-
-    <section>
-      <h2>YAML Action API ÉCHO</h2>
-      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Bloc OpenAPI simplifié décrivant l’action HTTP. Tu peux le coller dans l’éditeur YAML/JSON du GPT Builder Actions.</p>
-      <textarea id="yamlOutput" rows="18" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer le YAML d’action.</textarea>
-    </section>
-
-    <section>
-      <h2>Tester l’écho extérieur</h2>
-      <p style="color:#3a3a3c; line-height:1.5; margin:0 0 8px;">Envoie un message pour voir le pivot, le noyau et la périphérie calculés sans IA externe.</p>
-      <textarea id="echoMessage" rows="4" placeholder="Partage un extrait de récit..." style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: inherit;"></textarea>
-      <div class="actions" style="margin-top:10px;">
-        <button id="testEchoBtn">Envoyer à l’API ÉCHO</button>
+      <div class="actions">
+        <button id="generateBtn">Générer mon prompt ÉCHO</button>
+        <button class="secondary" id="copyPromptBtn">Copier le Prompt Système ÉCHO</button>
+        <button class="secondary" id="copyUrlBtn">Copier l’URL</button>
       </div>
-      <div id="echoResult" style="margin-top:10px; background:#eef2ff; padding:10px; border-radius:10px; color:#1e1e2f; min-height:40px;">Aucun appel encore.</div>
+
+      <div class="field">
+        <h2>Prompt Système ÉCHO</h2>
+        <textarea id="promptOutput" rows="12" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer ton prompt.</textarea>
+      </div>
+
+      <div class="field">
+        <h2>URL API prête</h2>
+        <code id="urlOutput">—</code>
+      </div>
     </section>
   </main>
 
   <footer>API ÉCHO · Prête pour ChatGPT Actions via openapi.json</footer>
 
   <script>
-    const BASE_API_URL = 'https://resonanceia.onrender.com/api/echo';
+    const BASE_API_URL = `${window.location.origin}/api/echo`;
 
     const groups = {
       intentions: ['exprimer', 'comprendre', 'recul', 'reguler', 'explorer', 'identifier', 'transformer'],
       publics: ['individuel', 'famille', 'couple', 'groupe', 'scolaire', 'pro', 'therapie', 'entre_seances'],
       styles: ['neutre', 'empathique', 'psycho', 'socratique', 'symbolique', 'corporel', 'poetique']
     };
+
+    function getTokenFromPage() {
+      const fromField = document.getElementById('apiToken').value.trim();
+      if (fromField) return fromField;
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('token') || '';
+    }
 
     function getSelectedValues(groupName) {
       return groups[groupName]
@@ -315,8 +307,22 @@
       document.getElementById('preview').textContent = lines.join('\n');
     }
 
+    function generateApiUrl(config) {
+      const params = new URLSearchParams();
+      if (config.intentions.length) params.set('intentions', config.intentions.join(','));
+      if (config.publics.length) params.set('publics', config.publics.join(','));
+      if (config.styles.length) params.set('styles', config.styles.join(','));
+      if (config.intensite) params.set('intensite', config.intensite);
+      if (config.nom) params.set('nom', config.nom);
+      const token = getTokenFromPage();
+      if (token) params.set('token', token);
+      const qs = params.toString();
+      return qs ? `${BASE_API_URL}?${qs}` : BASE_API_URL;
+    }
+
     function saveToLocalStorage(config) {
-      localStorage.setItem('echoConfig', JSON.stringify({ ...config }));
+      const token = getTokenFromPage();
+      localStorage.setItem('echoConfig', JSON.stringify({ ...config, token }));
     }
 
     function loadFromLocalStorage() {
@@ -343,6 +349,9 @@
         if (saved.nom) {
           document.getElementById('filterName').value = saved.nom;
         }
+        if (saved.token) {
+          document.getElementById('apiToken').value = saved.token;
+        }
       } catch (err) {
         console.warn('Impossible de relire la configuration stockée', err);
       }
@@ -361,15 +370,12 @@
       saveToLocalStorage(config);
       updatePreview();
 
-      const systemPrompt = generateSystemPrompt(config);
-      const configPrompt = generateConfigurationPrompt(systemPrompt, config);
-      const yamlAction = generateYamlAction(config);
+      const url = generateApiUrl(config);
+      document.getElementById('urlOutput').textContent = url;
+      const prompt = generateSystemPrompt(config);
+      document.getElementById('promptOutput').value = prompt;
 
-      document.getElementById('promptOutput').value = systemPrompt;
-      document.getElementById('configPromptOutput').value = configPrompt;
-      document.getElementById('yamlOutput').value = yamlAction;
-
-      return { config, systemPrompt, configPrompt, yamlAction };
+      return { config, url, prompt };
     }
 
     const labels = {
@@ -422,187 +428,38 @@
 
       const lines = [
         '===== PROMPT SYSTÈME ÉCHO =====',
-        "Tu fonctionnes dans l’Espace de l’Écho.",
+        "Tu fonctionnes dans l'Espace de l'Écho.",
         `Ton rôle est de favoriser : ${intentionsText}.`,
-        `Tu t’adresses principalement à : ${publicsText}.`,
-        `Tu t’exprimes dans un style : ${stylesText}.`,
-        `Intensité de la résonance : ${intensiteText}.`,
+        `Tu t'adresses principalement à : ${publicsText}.`,
+        `Tu t'exprimes dans un style : ${stylesText}.`,
+        `Intensité de résonance : ${intensiteText}`,
+        config.nom ? `Nom du filtre : ${config.nom}.` : null,
         '',
         'Principes relationnels :',
-        '- Tu reformules et résonnes plutôt que d’expliquer.',
-        "- Tu n’interprètes pas à la place de la personne.",
-        "- Tu n’es pas un thérapeute ni un médecin, mais une médiation.",
-        '- Tu laisses l’utilisateur libre de ses interprétations.'
-      ];
+        '- Tu reformules et résonnes plutôt que d\'expliquer.',
+        "- Tu n'interprètes pas à la place de la personne.",
+        "- Tu n'es pas un thérapeute ni un expert, mais une médiation.",
+        '- Tu laisses des silences textuels lorsque nécessaire (…).'
+      ].filter(Boolean);
 
       if (config.styles.includes('symbolique')) {
-        lines.push('Tu peux évoquer images, symboles et constellations émotionnelles.');
+        lines.push('Tu peux évoquer images, archétypes, constellations émotionnelles.');
       }
       if (config.styles.includes('poetique')) {
-        lines.push('Tu peux t’autoriser un langage métaphorique et suggestif.');
+        lines.push('Tu privilégies un langage métaphorique suggestif.');
       }
       if (config.styles.includes('corporel')) {
-        lines.push('Tu peux parfois ramener vers les sensations et le ressenti corporel.');
+        lines.push('Tu ramènes parfois vers les sensations ou la posture.');
       }
 
-      lines.push('', '===== FIN PROMPT SYSTÈME =====');
+      lines.push('', 'Intensité :', '- légère → reformulation simple.', '- modérée → suggestion métaphorique modérée.', '- haute → liberté poétique + symbolique + sensorialité.', '', 'Fin du prompt système.', '===== FIN =====');
+
       return lines.join('\n');
-    }
-
-    function generateConfigurationPrompt(systemPrompt, config) {
-      const publicsText = formatList(config.publics, 'publics');
-      const stylesText = formatList(config.styles, 'styles');
-      const intensiteText = config.intensite || 'non précisée';
-      const nom = config.nom || 'ÉCHO personnalisé';
-
-      return [
-        '===== PROMPT CONFIGURATION GPT ÉCHO =====',
-        'Je veux que tu configures ce GPT comme assistant résonant connecté à une API externe.',
-        '',
-        `Nom du GPT : IA ÉCHO – ${nom}`,
-        `Description : GPT configuré pour accompagner ${publicsText} avec une résonance ${stylesText} et une intensité ${intensiteText}.`,
-        '',
-        '1) Colle le texte suivant dans “Instructions” (prompt système) :',
-        systemPrompt,
-        '',
-        '2) Crée une Action HTTP nommée "echo_exterieur" avec les paramètres suivants :',
-        '- Méthode : POST',
-        '- URL : https://resonanceia.onrender.com/api/echo',
-        '- Content-Type : application/json',
-        '- Corps JSON :',
-        '  {',
-        '    "message": "texte de l’utilisateur",',
-        `    "intentions": ${JSON.stringify(config.intentions)},`,
-        `    "publics": ${JSON.stringify(config.publics)},`,
-        `    "styles": ${JSON.stringify(config.styles)},`,
-        `    "intensite": "${config.intensite || ''}"`,
-        '  }',
-        '',
-        '3) Utilise cette Action pour demander un “Écho extérieur” après avoir reçu le message de l’utilisateur, puis intègre cet écho dans ta réponse, sans citer le JSON brut.',
-        '',
-        '===== FIN PROMPT CONFIGURATION ====='
-      ].join('\n');
-    }
-
-    function generateYamlAction(config) {
-      const exampleBody = {
-        message: 'Texte de l’utilisateur',
-        intentions: config.intentions,
-        publics: config.publics,
-        styles: config.styles,
-        intensite: config.intensite
-      };
-
-      return [
-        'openapi: 3.1.0',
-        'info:',
-        '  title: API ÉCHO – Résonance extérieure',
-        '  version: 1.0.0',
-        'servers:',
-        '  - url: https://resonanceia.onrender.com',
-        'paths:',
-        '  /api/echo:',
-        '    post:',
-        '      operationId: echoExterieur',
-        "      summary: Analyse Courtial frugale et renvoi d'un écho extérieur",
-        '      requestBody:',
-        '        required: true',
-        '        content:',
-        '          application/json:',
-        '            schema:',
-        '              type: object',
-        '              properties:',
-        '                message:',
-        '                  type: string',
-        '                intentions:',
-        '                  type: array',
-        '                  items:',
-        '                    type: string',
-        '                publics:',
-        '                  type: array',
-        '                  items:',
-        '                    type: string',
-        '                styles:',
-        '                  type: array',
-        '                  items:',
-        '                    type: string',
-        '                intensite:',
-        '                  type: string',
-        "              required: ['message']",
-        '              example: |',
-        `                ${JSON.stringify(exampleBody, null, 2).replace(/\n/g, '\n                ')}`,
-        '      responses:',
-        "        '200':",
-        '          description: Écho calculé',
-        '          content:',
-        '            application/json:',
-        '              schema:',
-        '                type: object',
-        '                properties:',
-        '                  pivot:',
-        '                    type: string',
-        '                  noyau:',
-        '                    type: array',
-        '                    items:',
-        '                      type: string',
-        '                  peripherie:',
-        '                    type: array',
-        '                    items:',
-        '                      type: string',
-        '                  centralite:',
-        '                    type: integer',
-        '                  delta:',
-        '                    type: string',
-        '                  tags:',
-        '                    type: array',
-        '                    items:',
-        '                      type: string'
-      ].join('\n');
     }
 
     function copyToClipboard(text) {
       if (!text) return;
       navigator.clipboard.writeText(text).catch(() => alert('Copie impossible dans ce navigateur.'));
-    }
-
-    function renderEchoResult(payload) {
-      const container = document.getElementById('echoResult');
-      if (!payload) {
-        container.textContent = 'Pas de réponse reçue.';
-        return;
-      }
-
-      if (payload.echo) {
-        container.textContent = payload.echo;
-        return;
-      }
-
-      const pivot = payload.pivot || '—';
-      const tags = Array.isArray(payload.tags) ? payload.tags.join(', ') : '—';
-      const delta = payload.delta || '—';
-      container.textContent = `Écho extérieur : ${pivot} + ${tags} (delta ${delta})`;
-    }
-
-    async function callEchoApi() {
-      const message = document.getElementById('echoMessage').value.trim();
-      try {
-        const response = await fetch(BASE_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message,
-            intentions: getSelectedValues('intentions'),
-            publics: getSelectedValues('publics'),
-            styles: getSelectedValues('styles'),
-            intensite: getSelectedIntensity()
-          })
-        });
-        const data = await response.json();
-        renderEchoResult(data);
-      } catch (err) {
-        document.getElementById('echoResult').textContent = 'Erreur lors de l’appel API.';
-        console.error(err);
-      }
     }
 
     function attachListeners() {
@@ -615,28 +472,29 @@
         generateConfig();
       });
 
+      document.getElementById('copyUrlBtn').addEventListener('click', () => {
+        const { url } = generateConfig();
+        copyToClipboard(url);
+      });
+
       document.getElementById('copyPromptBtn').addEventListener('click', () => {
-        const { systemPrompt } = generateConfig();
-        copyToClipboard(systemPrompt);
+        const { prompt } = generateConfig();
+        copyToClipboard(prompt);
       });
+    }
 
-      document.getElementById('copyConfigBtn').addEventListener('click', () => {
-        const { configPrompt } = generateConfig();
-        copyToClipboard(configPrompt);
-      });
-
-      document.getElementById('copyYamlBtn').addEventListener('click', () => {
-        const { yamlAction } = generateConfig();
-        copyToClipboard(yamlAction);
-      });
-
-      document.getElementById('testEchoBtn').addEventListener('click', () => {
-        callEchoApi();
-      });
+    function hydrateFromQueryToken() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        const input = document.getElementById('apiToken');
+        input.value = token;
+      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       loadFromLocalStorage();
+      hydrateFromQueryToken();
       attachListeners();
       updatePreview();
       generateConfig();
