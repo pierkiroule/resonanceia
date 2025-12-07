@@ -3,12 +3,15 @@ const statusEl = document.getElementById('status');
 const echoPanel = document.getElementById('echoPanel');
 const sendBtn = document.getElementById('sendBtn');
 const resetBtn = document.getElementById('resetBtn');
+const integrateBtn = document.getElementById('integrateBtn');
 const messageInput = document.getElementById('msg');
 const temperatureInput = document.getElementById('temperature');
 const topPInput = document.getElementById('top_p');
 const maxTokensInput = document.getElementById('max_tokens');
 const wordCloudEl = document.getElementById('wordcloud-container');
 const metaphorBadge = document.getElementById('metaphorBadge');
+const wordMemoryResetBtn = document.getElementById('wordMemoryReset');
+const releasePivotBtn = document.getElementById('releasePivot');
 const dataModeEl = document.getElementById('dataMode');
 const debugToggleBtn = document.getElementById('debugToggle');
 const nebiusStatusEl = document.getElementById('nebiusStatus');
@@ -16,17 +19,70 @@ const nebiusOutputEl = document.getElementById('nebiusOutput');
 const modeToggleBtn = document.getElementById('modeToggle');
 const graphContainerEl = document.getElementById('graph-container');
 const graphSvg = document.getElementById('resonantGraph');
+const resonanceModeEl = document.getElementById('resonanceMode');
+const poetryLevelInput = document.getElementById('poetryLevel');
+const poetryLabel = document.getElementById('poetryLabel');
 
 // --- MOCK API REPLACEMENT FOR DEV --- //
 const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 let USE_MOCK = isLocalhost;
 let ENABLE_NEBIUS = false; // passe à true uniquement quand la clé est configurée côté serveur
+let RESONANCE_MODE = 'raw';
+
+const resonanceHistory = [];
 
 let mockMemory = {}; // {mot: count}
 
 const FRENCH_STOPWORDS = new Set([
-  'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux'
+  'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux',
+  'un', 'une', 'd', 'dans', 'pour', 'par', 'que'
 ]);
+
+// Glossaires internes pour nourrir le prompt résonant
+const EMERGENCE_METAPHORS = [
+  'un filament de lumière qui se tisse dans la nuit',
+  'une source discrète qui affleure sous la pierre',
+  'un bourgeon encore fermé dans l’air frais',
+  'un sentier qui se dessine à mesure qu’on marche',
+  'une constellation qui se révèle lentement',
+  'une encre qui se déploie dans l’eau claire',
+  'un phare lointain qui pulse par intervalles',
+  'un cercle d’écho qui se propage dans une crique',
+  'une braise qui rougeoie sous la cendre',
+  'une fenêtre entrouverte sur un matin voilé',
+  'un fil fragile qui relie deux rives',
+  'un jardin encore endormi qui retient son souffle',
+];
+
+const SENSORY_RESONANCES = [
+  'un goût de pluie sur la langue',
+  'un parfum de terre après l’orage',
+  'le grain chaud d’un tissu contre la peau',
+  'une lumière bleuie au petit matin',
+  'un clapotis régulier contre la coque',
+  'un souffle tiède sur la nuque',
+  'le craquement d’un parquet ancien',
+  'une buée qui se pose sur la vitre',
+  'le froid d’une clé entre les doigts',
+  'un murmure au travers d’une porte entrouverte',
+  'une lueur d’ambre sur un bois poli',
+  'un éclat de voix qui retombe en douceur',
+];
+
+const THERAPEUTIC_PROMPTS = [
+  "Quand ce mot revient, qu'est-ce qu'il cherche à entourer ?",
+  "Quelles images se lèvent avec ce terme ?",
+  "Que voudrait dire ce silence autour de lui ?",
+  "Quelle nuance manque encore pour que cela respire ?",
+  "Si tu l'écoutais comme un murmure, que répondrait-il ?",
+  "Qu'est-ce qui frappe doucement derrière cette idée ?",
+  "Quelle texture prend ce sentiment quand tu le nommes ?",
+  "Quels contours se dessinent si tu le laisses flotter ?",
+  "Qu'est-ce qui cherche un passage à travers ces mots ?",
+  "Que se passe-t-il si tu le rapproches d’un autre mot cher ?",
+  "Où ce mot se dépose-t-il dans ton corps ?",
+  "Quelle couleur lui donnerais-tu à cet instant ?",
+];
 
 const SYSTEM_PROMPT = `Tu réponds en français, en posture d’écoute transverse.
 Tu ne commentes jamais ton raisonnement interne.
@@ -35,6 +91,31 @@ Tu ne donnes aucun conseil.
 Tu reformules, explores, questionnes ce qui résonne.
 Tu ne mentionnes jamais être un modèle.
 Tu ne produis aucune phrase contenant : 'je dois', 'je vais', 'okay the user', 'as a model'.`;
+
+const METAPHOR_IMAGES = {
+  brume: [
+    "comme une brume légère qui tarde à se lever",
+    "une nappe de brouillard qui adoucit les contours",
+    "un voile pâle suspendu entre le dedans et le dehors",
+  ],
+  orage: [
+    "comme un orage qui gronde derrière la colline",
+    "un ciel chargé d'étincelles et de tension sourde",
+    "des nuages lourds prêts à éclater en éclairs bleutés",
+  ],
+  eclaircie: [
+    "comme une éclaircie dorée après la pluie",
+    "un souffle tiède qui entrouvre les nuages",
+    "des rais de lumière qui filent entre les branches",
+  ],
+};
+
+const RESONANCE_MEMORY_KEY = 'resonant-memory-v2';
+const WORD_MEMORY_KEY = 'resonant-word-memory';
+const WORD_FADE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+let wordMemory = {};
+let linkMemory = {};
+let lastPivot = '';
 
 function normalizeWord(word) {
   return word
@@ -45,6 +126,167 @@ function normalizeWord(word) {
 
 function isStopword(word) {
   return FRENCH_STOPWORDS.has(word);
+}
+
+function loadMemory() {
+  try {
+    const rawResonance = localStorage.getItem(RESONANCE_MEMORY_KEY);
+    if (rawResonance) {
+      const parsed = JSON.parse(rawResonance);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          words: parsed.words || {},
+          links: parsed.links || {},
+          lastPivot: parsed.lastPivot || '',
+        };
+      }
+    }
+
+    const raw = localStorage.getItem(WORD_MEMORY_KEY);
+    if (!raw) return { words: {}, links: {}, lastPivot: '' };
+    const parsedLegacy = JSON.parse(raw);
+    if (!parsedLegacy || typeof parsedLegacy !== 'object') return { words: {}, links: {}, lastPivot: '' };
+    const words = Object.entries(parsedLegacy).reduce((acc, [key, value]) => {
+      if (value && typeof value.count === 'number' && typeof value.lastSeen === 'number') {
+        acc[key] = { count: value.count, lastSeen: value.lastSeen };
+      }
+      return acc;
+    }, {});
+    return { words, links: {}, lastPivot: '' };
+  } catch (error) {
+    console.warn('Mémoire locale corrompue, réinitialisation.', error);
+    return { words: {}, links: {}, lastPivot: '' };
+  }
+}
+
+function saveMemory() {
+  try {
+    localStorage.setItem(RESONANCE_MEMORY_KEY, JSON.stringify({ words: wordMemory, links: linkMemory, lastPivot }));
+  } catch (error) {
+    console.warn('Impossible de sauvegarder la mémoire locale', error);
+  }
+}
+
+function pickFromArray(list = []) {
+  if (!Array.isArray(list) || list.length === 0) return '';
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function describePoetryLevel(level = 1) {
+  if (level === 0) return 'ton neutre, phrases contenues';
+  if (level === 2) return 'registre hypno-poétique, images étoffées, phrases allongées';
+  return 'légère musicalité, quelques images souples';
+}
+
+function buildMetaphorLine(metaphor, level = 1) {
+  const allowed = Object.keys(METAPHOR_IMAGES);
+  const key = allowed.includes(metaphor) ? metaphor : 'brume';
+  const base = pickFromArray(METAPHOR_IMAGES[key]) || 'comme un souffle discret.';
+  if (level === 0) return base;
+  if (level === 2) return `${base}, aux contours qui s'étirent et se teintent de reflets mouvants.`;
+  return `${base}, avec une douceur feutrée.`;
+}
+
+function buildNarrativeEcho(pivot, level = 1) {
+  if (!pivot) {
+    return 'Ces mots flottent sans ancre précise, comme un courant qui cherche sa rive.';
+  }
+
+  const stem = `Ces mots semblent tourner autour de «${pivot}»`;
+  if (level === 0) return `${stem}, en cercle calme.`;
+  if (level === 2) return `${stem}, traçant des volutes lentes qui tressent un halo vibrant autour de ce terme.`;
+  return `${stem}, comme un souffle qui insiste doucement.`;
+}
+
+function buildOpenQuestion(pivot) {
+  if (!pivot) return "Qu'est-ce qui cherche à se dire juste derrière ces mots ?";
+  return `Qu'est-ce qui frémit derrière «${pivot}», à peine formulé ?`;
+}
+
+function summarizeResonance(history = []) {
+  const recent = history.slice(-3).filter((item) => item && (item.pivot || (item.noyau || []).length));
+  if (recent.length === 0) return 'Pivots récurrents : (pas encore de résonance).\nTrame émergente : une page encore blanche.';
+
+  const pivotCounts = recent.reduce((acc, item) => {
+    if (item.pivot) acc[item.pivot] = (acc[item.pivot] || 0) + 1;
+    return acc;
+  }, {});
+  const topPivots = Object.entries(pivotCounts)
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .slice(0, 3)
+    .map(([pivot]) => pivot);
+
+  const noyauTerms = new Set();
+  recent.forEach((item) => {
+    (item.noyau || []).slice(0, 3).forEach((n) => noyauTerms.add(n));
+  });
+
+  const line1 = topPivots.length
+    ? `Pivots récurrents : ${topPivots.join(', ')}.`
+    : 'Pivots récurrents : encore indécis.';
+
+  const line2 = recent.find((item) => item.resume_courant)?.resume_courant
+    || (noyauTerms.size ? `Trame émergente : ${Array.from(noyauTerms).join(', ')}.` : 'Trame émergente : en murmure.');
+
+  return `${line1}\n${line2}`;
+}
+
+function buildResonantPrompt(dataEcho = {}, userMessage = '', options = {}) {
+  const { history = [], poetryLevel = 1 } = options;
+  const summary = summarizeResonance(history);
+  const pivot = dataEcho?.pivot || lastPivot || (history.slice(-1)[0]?.pivot ?? '');
+  const narrativeEcho = buildNarrativeEcho(pivot, poetryLevel);
+  const metaphorLine = buildMetaphorLine(dataEcho?.metaphor, poetryLevel);
+  const openQuestion = buildOpenQuestion(pivot);
+  const poetryDescriptor = describePoetryLevel(poetryLevel);
+  const emergentList = filterWordList([pivot, ...(dataEcho?.noyau || []), ...(dataEcho?.peripherie || [])]);
+  const emergentFromMemory = !emergentList.length
+    ? Object.entries(wordMemory)
+      .sort(([, a], [, b]) => Number(b.count) - Number(a.count))
+      .slice(0, 3)
+      .map(([w]) => w)
+    : [];
+  const emergent = (emergentList.length ? emergentList.slice(0, 3) : emergentFromMemory).join(', ');
+  const emergentLine = emergent
+    ? `Mots émergents : ${emergent}.`
+    : 'Mots émergents : encore discrets.';
+  const sensoryLine = pickFromArray(SENSORY_RESONANCES);
+  const emergentMetaphor = pickFromArray(EMERGENCE_METAPHORS);
+  const therapeutic = pickFromArray(THERAPEUTIC_PROMPTS);
+
+  return `------------------------------------------------------
+CONTEXTE DES RÉSONANCES PRÉCÉDENTES :
+${summary}
+
+ÉCHO NARRATIF :
+${narrativeEcho}
+
+IMAGE MÉTAPHORIQUE :
+${metaphorLine} · ${emergentMetaphor}
+
+TISSE SENSORIEL :
+${sensoryLine}
+
+MOTS EN VEILLE :
+${emergentLine}
+
+RELANCE OUVERTE :
+${therapeutic}
+${openQuestion}
+
+PAROLE DÉPOSÉE :
+"${userMessage}"
+
+RÉPONDS :
+- en français
+- avec nuance (${poetryDescriptor})
+- en 6 à 12 lignes
+- en phrases complètes, imagées, mais lisibles
+- sans méta-commentaire
+- sans te référer à toi-même
+- sans donner de conseils ni solutions
+- fais résonner la réponse précédente si pertinente
+------------------------------------------------------`;
 }
 
 function mock(message) {
@@ -99,25 +341,7 @@ function mock(message) {
 }
 
 const conversation = [];
-const cloudState = new Map();
-const WORD_LIFETIME = 12000;
-const REMOVAL_DURATION = 1200;
 const METAPHOR_CLASSES = ['brume', 'orage', 'eclaircie'];
-const BASE_FONT_SIZES = {
-  pivot: 32,
-  noyau: 22,
-  peripherie: 16,
-};
-const RADII = {
-  pivot: 0,
-  noyau: 110,
-  peripherie: 170,
-};
-const DRIFT_INTENSITY = {
-  pivot: 4,
-  noyau: 9,
-  peripherie: 14,
-};
 
 const GRAPH_RADII = {
   pivot: 0,
@@ -191,6 +415,22 @@ function setToggleState(useNebius) {
   modeToggleBtn.classList.toggle('is-on', useNebius);
 }
 
+function setResonanceMode(mode) {
+  RESONANCE_MODE = mode === 'enriched' ? 'enriched' : 'raw';
+  if (!resonanceModeEl) return;
+  resonanceModeEl.querySelectorAll('.pill').forEach((btn) => {
+    const isActive = btn.dataset.mode === RESONANCE_MODE;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+}
+
+function setPoetryLabel(level = 1) {
+  if (!poetryLabel) return;
+  const descriptions = ['Neutre — phrases concises', 'Léger — phrases plus souples', 'Hypno — images dilatées'];
+  poetryLabel.textContent = descriptions[level] || descriptions[1];
+}
+
 function computeNebiusStatusLabel() {
   return ENABLE_NEBIUS
     ? 'Nebius activé — clé API détectée'
@@ -234,6 +474,113 @@ function filterWordList(list) {
     .filter((w) => !isStopword(w));
 }
 
+function recordLink(pairA, pairB, weight = 1) {
+  if (!pairA || !pairB || pairA === pairB) return;
+  const [a, b] = [pairA, pairB].sort();
+  const key = `${a}-${b}`;
+  const current = linkMemory[key] || 0;
+  linkMemory[key] = current + weight;
+}
+
+function injectResonancePrompt(word) {
+  if (!messageInput || !word) return;
+  const prompt = pickFromArray(THERAPEUTIC_PROMPTS) || "Que veut dire ce mot pour toi ?";
+  messageInput.value = `Quand tu dis «${word}», ${prompt}`;
+  messageInput.focus();
+}
+
+function renderWordcloud() {
+  if (!wordCloudEl) return;
+  wordCloudEl.innerHTML = '';
+
+  const entries = Object.entries(wordMemory);
+  if (entries.length === 0) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder small';
+    placeholder.textContent = '— En attente des premiers mots résonants…';
+    wordCloudEl.appendChild(placeholder);
+    return;
+  }
+
+  const maxCount = Math.max(...entries.map(([, info]) => info.count), 1);
+  const now = Date.now();
+
+  entries
+    .sort((a, b) => {
+      if (a[0] === lastPivot) return -1;
+      if (b[0] === lastPivot) return 1;
+      return Number(b[1].count) - Number(a[1].count) || a[0].localeCompare(b[0]);
+    })
+    .forEach(([word, info]) => {
+      const size = 0.8 + (Number(info.count) / maxCount) * (2.2 - 0.8);
+      const token = document.createElement('span');
+      token.className = 'word-token';
+      token.textContent = word;
+      token.title = `Apparitions: ${info.count}`;
+      token.style.fontSize = `${size.toFixed(2)}rem`;
+      if (word === lastPivot) token.classList.add('pivot');
+      if (now - info.lastSeen > WORD_FADE_THRESHOLD) token.classList.add('faded');
+      token.addEventListener('click', () => injectResonancePrompt(word));
+      wordCloudEl.appendChild(token);
+    });
+}
+
+function updateMemoryWithEcho(data = {}) {
+  const now = Date.now();
+  const incoming = [];
+  const normalizedWords = [];
+
+  if (data?.pivot) incoming.push({ word: data.pivot, category: 'pivot' });
+  (Array.isArray(data?.noyau) ? data.noyau : []).forEach((word) => incoming.push({ word, category: 'noyau' }));
+  (Array.isArray(data?.peripherie) ? data.peripherie : []).forEach((word) => incoming.push({ word, category: 'peripherie' }));
+
+  incoming.forEach(({ word, category }) => {
+    const normalized = normalizeWord(word);
+    if (!normalized || isStopword(normalized)) return;
+    const current = wordMemory[normalized] || { count: 0, lastSeen: now };
+    wordMemory[normalized] = { count: current.count + 1, lastSeen: now };
+    normalizedWords.push(normalized);
+    if (category === 'pivot') {
+      lastPivot = normalized;
+    }
+  });
+
+  // enregistre les cooccurrences pour alimenter le graph
+  for (let i = 0; i < normalizedWords.length; i += 1) {
+    for (let j = i + 1; j < normalizedWords.length; j += 1) {
+      recordLink(normalizedWords[i], normalizedWords[j]);
+    }
+  }
+
+  saveMemory();
+  renderWordcloud();
+}
+
+function clearMemory() {
+  wordMemory = {};
+  linkMemory = {};
+  lastPivot = '';
+  saveMemory();
+  applyMetaphorStyle(null);
+  renderWordcloud();
+}
+
+function releasePivot() {
+  if (lastPivot) {
+    if (wordMemory[lastPivot]) {
+      delete wordMemory[lastPivot];
+    }
+    Object.keys(linkMemory).forEach((pairKey) => {
+      if (pairKey.includes(`${lastPivot}-`) || pairKey.endsWith(`-${lastPivot}`)) {
+        delete linkMemory[pairKey];
+      }
+    });
+  }
+  lastPivot = '';
+  saveMemory();
+  renderWordcloud();
+}
+
 function toggleDebugPanels(show) {
   document.querySelectorAll('.debug-section').forEach((section) => {
     section.setAttribute('aria-hidden', show ? 'false' : 'true');
@@ -246,96 +593,17 @@ function toggleDebugPanels(show) {
 
 function resetConversation() {
   conversation.length = 0;
+  resonanceHistory.length = 0;
   renderHistory();
   echoPanel.textContent = "En attente d'un premier message...";
   setStatus('Prêt à dialoguer (modèle google/gemma-2-2b-it).');
   displayNebiusStatus(computeNebiusStatusLabel());
   displayNebiusOutput(ENABLE_NEBIUS ? null : { mock: true });
-  resetWordCloud();
+  clearMemory();
   resetGraph();
   if (USE_MOCK) {
     mockMemory = {};
   }
-}
-
-function setPlaceholderVisibility() {
-  const placeholder = wordCloudEl.querySelector('.placeholder');
-  if (cloudState.size === 0) {
-    if (!placeholder) {
-      const p = document.createElement('div');
-      p.className = 'placeholder small';
-      p.textContent = 'En attente des premiers mots...';
-      wordCloudEl.appendChild(p);
-    }
-  } else if (placeholder) {
-    placeholder.remove();
-  }
-}
-
-function upsertWord(word, category, metrics) {
-  if (!word) return;
-  const key = word.toLowerCase();
-  let entry = cloudState.get(key);
-
-  if (!entry) {
-    const element = document.createElement('span');
-    element.className = `word ${category}`;
-    element.textContent = word;
-    element.dataset.category = category;
-    wordCloudEl.appendChild(element);
-    const angle = (hashWord(word) % 360) * (Math.PI / 180);
-    entry = {
-      element,
-      lastSeen: Date.now(),
-      category,
-      angle,
-      baseRadius: RADII[category] || 0,
-      driftSeed: (hashWord(word) % 1000) / 1000,
-      forceOffset: 0,
-    };
-    cloudState.set(key, entry);
-  } else {
-    entry.category = category;
-    entry.element.className = `word ${category}`;
-    entry.element.textContent = word;
-    entry.lastSeen = Date.now();
-    entry.element.classList.remove('word-expiring');
-    entry.baseRadius = RADII[category] || entry.baseRadius;
-  }
-
-  applyWordMetrics(entry, metrics);
-  setPlaceholderVisibility();
-}
-
-function hashWord(word) {
-  let hash = 0;
-  for (let i = 0; i < word.length; i += 1) {
-    hash = (hash << 5) - hash + word.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-function applyWordMetrics(entry, metrics = {}) {
-  const word = entry.element.textContent.toLowerCase();
-  const deltaMap = metrics.delta || {};
-  const stabilityMap = metrics.stabilite || metrics.stability || {};
-  const forceMap = metrics.forceLiens || {};
-
-  const delta = Number(deltaMap[word] || 0);
-  const stability = Number(stabilityMap[word] || 0);
-
-  const baseSize = BASE_FONT_SIZES[entry.category] || 16;
-  const sizeBoost = Math.max(-0.5, Math.min(0.8, delta * 0.12));
-  entry.element.style.fontSize = `${Math.max(10, baseSize * (1 + sizeBoost))}px`;
-
-  const opacity = 0.3 + Math.min(stability, 6) / 6 * 0.7;
-  entry.element.style.opacity = Math.min(1, opacity).toFixed(2);
-
-  entry.forceOffset = strongestLinkOffset(word, forceMap);
-
-  const scale = 1 + Math.max(-0.25, Math.min(0.4, delta * 0.05));
-  entry.element.style.setProperty('--scale', scale.toFixed(2));
 }
 
 function strongestLinkOffset(word, forceMap = {}) {
@@ -347,40 +615,6 @@ function strongestLinkOffset(word, forceMap = {}) {
     .sort(([, wA], [, wB]) => Number(wB) - Number(wA))[0];
 
   return strongestLink ? Math.max(0, Number(strongestLink[1]) - 0.5) * 28 : 0;
-}
-
-function setWordPosition(entry, time) {
-  const drift = DRIFT_INTENSITY[entry.category] || 6;
-  const wobble = Math.sin(time / 2000 + entry.driftSeed * 8) * drift;
-  const lightShake = Math.cos(time / 2500 + entry.driftSeed * 5) * (entry.category === 'pivot' ? 2 : 6);
-  const radius = (entry.baseRadius + entry.forceOffset + wobble) / 2.2;
-  const angle = entry.angle + Math.sin(time / 3200 + entry.driftSeed * 10) * 0.45;
-  const x = 50 + Math.cos(angle) * radius + lightShake * 0.1;
-  const y = 50 + Math.sin(angle) * radius + lightShake * 0.1;
-
-  entry.element.style.setProperty('--x', `${x}%`);
-  entry.element.style.setProperty('--y', `${y}%`);
-}
-
-function animateWords(time) {
-  cloudState.forEach((entry) => setWordPosition(entry, time || performance.now()));
-  requestAnimationFrame(animateWords);
-}
-
-function cleanupWords() {
-  const now = Date.now();
-  cloudState.forEach((entry, key) => {
-    if (entry.removing) return;
-    if (now - entry.lastSeen > WORD_LIFETIME) {
-      entry.removing = true;
-      entry.element.classList.add('word-expiring');
-      setTimeout(() => {
-        entry.element.remove();
-        cloudState.delete(key);
-        setPlaceholderVisibility();
-      }, REMOVAL_DURATION);
-    }
-  });
 }
 
 function ensureGraphLayers() {
@@ -509,7 +743,7 @@ function updateGraphFromEcho(data) {
   };
 
   const activeWords = new Set();
-  const forceMap = metrics.forceLiens;
+  const forceMap = Object.keys(metrics.forceLiens || {}).length ? metrics.forceLiens : linkMemory;
 
   pivotWords.forEach((w) => { upsertGraphNode(w, 'pivot', metrics, forceMap); activeWords.add(w); });
   noyauWords.forEach((w) => { upsertGraphNode(w, 'noyau', metrics, forceMap); activeWords.add(w); });
@@ -572,34 +806,6 @@ function applyMetaphorStyle(metaphor) {
   metaphorBadge.textContent = metaphor || '—';
 }
 
-function updateWordCloudFromEcho(data) {
-  const pivotWords = filterWordList(data?.pivot ? [data.pivot] : []);
-  const noyauWords = filterWordList(Array.isArray(data?.noyau) ? data.noyau : []);
-  const peripherieWords = filterWordList(Array.isArray(data?.peripherie) ? data.peripherie : []);
-
-  const metrics = {
-    delta: data?.delta || {},
-    stabilite: data?.stabilite || data?.stability || {},
-    forceLiens: data?.forceLiens || {},
-  };
-
-  pivotWords.forEach((w) => upsertWord(w, 'pivot', metrics));
-  noyauWords.forEach((w) => upsertWord(w, 'noyau', metrics));
-  peripherieWords.forEach((w) => upsertWord(w, 'peripherie', metrics));
-
-  applyMetaphorStyle(data?.metaphor);
-
-  // réapplique les métriques aux mots existants pour refléter la stabilité/delta actuelle
-  cloudState.forEach((entry) => applyWordMetrics(entry, metrics));
-}
-
-function resetWordCloud() {
-  cloudState.forEach((entry) => entry.element.remove());
-  cloudState.clear();
-  setPlaceholderVisibility();
-  applyMetaphorStyle(null);
-}
-
 function formatCooccurrences(coocc) {
   if (!coocc || typeof coocc !== 'object') return '—';
   const entries = Object.entries(coocc);
@@ -629,6 +835,24 @@ function friendlyNebiusError(error) {
   }
 
   return message;
+}
+
+function pushResonanceHistory(data) {
+  if (!data) return;
+  resonanceHistory.push(data);
+  if (resonanceHistory.length > 12) {
+    resonanceHistory.shift();
+  }
+}
+
+function renderEchoData(data, origin = '/api/echo') {
+  if (!data) return;
+  const originLabel = data.mock ? 'MOCK local' : origin;
+  echoPanel.textContent = `Source: ${originLabel}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
+  updateMemoryWithEcho(data);
+  applyMetaphorStyle(data?.metaphor);
+  updateGraphFromEcho(data);
+  pushResonanceHistory(data);
 }
 
 async function callNebiusChat(payload) {
@@ -683,15 +907,14 @@ async function callResonanceAPI(message) {
   return res.json();
 }
 
-async function updateEcho(message) {
+async function updateEcho(message, existingData = null) {
   try {
-    const data = await callResonanceAPI(message);
-    const origin = data.mock ? 'MOCK local' : '/api/echo';
-    echoPanel.textContent = `Source: ${origin}\nPivot: ${data.pivot ?? '—'}\nNoyau: ${(data.noyau || []).join(', ')}\nPériphérie: ${(data.peripherie || []).join(', ')}\nCooccurrences: ${formatCooccurrences(data.cooccurrences)}\nDelta (croissance): ${formatTopMap(data.delta)}\nStabilité: ${formatTopMap(data.stabilite || data.stability)}\nForce liens: ${formatTopMap(data.forceLiens)}\nMétaphore: ${data.metaphor || '—'}\n\nÉcho: ${data.echo || '(silence)'}${data.question ? `\nQuestion: ${data.question}` : ''}`;
-    updateWordCloudFromEcho(data);
-    updateGraphFromEcho(data);
+    const data = existingData || await callResonanceAPI(message);
+    renderEchoData(data, existingData ? 'Réemploi' : '/api/echo');
+    return data;
   } catch (error) {
     echoPanel.textContent = 'Analyse impossible: ' + error.message;
+    return null;
   }
 }
 
@@ -715,8 +938,30 @@ async function sendMessage() {
   setStatus(ENABLE_NEBIUS ? '⏳ Envoi au modèle Nebius...' : '⏳ Réponse simulée (Nebius désactivé)...');
   sendBtn.disabled = true;
 
+  const poetryLevel = Number(poetryLevelInput?.value) || 1;
+  let echoData = null;
+  try {
+    echoData = await callResonanceAPI(content);
+    renderEchoData(echoData);
+  } catch (error) {
+    echoPanel.textContent = 'Analyse impossible: ' + error.message;
+  }
+
+  const useResonantPrompt = RESONANCE_MODE === 'enriched' && echoData;
+  const enrichedMessage = useResonantPrompt
+    ? buildResonantPrompt(echoData, content, { history: resonanceHistory, poetryLevel })
+    : content;
+
+  const messagesForModel = conversation.map((entry, idx) => {
+    const isLastUser = idx === conversation.length - 1 && entry.role === 'user';
+    if (useResonantPrompt && isLastUser) {
+      return { ...entry, content: enrichedMessage };
+    }
+    return entry;
+  });
+
   const payload = {
-    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversation],
+    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messagesForModel],
     temperature: Number(temperatureInput.value) || 0.7,
     top_p: Number(topPInput.value) || 0.9,
     max_tokens: Number(maxTokensInput.value) || 256,
@@ -734,7 +979,10 @@ async function sendMessage() {
     setStatus(statusText);
     displayNebiusStatus(data.mock ? computeNebiusStatusLabel() : 'Nebius activé — clé API présente');
     displayNebiusOutput(data);
-    updateEcho(content);
+    if (!echoData) {
+      updateEcho(content);
+    }
+    updateEcho(reply);
   } catch (error) {
     const friendly = friendlyNebiusError(error);
     setStatus('❌ ' + friendly);
@@ -747,6 +995,21 @@ async function sendMessage() {
 
 sendBtn.addEventListener('click', sendMessage);
 resetBtn.addEventListener('click', resetConversation);
+if (wordMemoryResetBtn) {
+  wordMemoryResetBtn.addEventListener('click', () => clearMemory());
+}
+if (releasePivotBtn) {
+  releasePivotBtn.addEventListener('click', () => releasePivot());
+}
+if (integrateBtn) {
+  integrateBtn.addEventListener('click', () => {
+    const lastAssistant = [...conversation].reverse().find((item) => item.role === 'assistant');
+    if (lastAssistant?.content) {
+      updateEcho(lastAssistant.content);
+      setStatus('Réintégration de la dernière résonance...');
+    }
+  });
+}
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
     sendMessage();
@@ -766,9 +1029,28 @@ if (modeToggleBtn) {
   modeToggleBtn.addEventListener('click', toggleApiMode);
 }
 
-setPlaceholderVisibility();
+if (resonanceModeEl) {
+  resonanceModeEl.addEventListener('click', (event) => {
+    const btn = event.target.closest('.pill');
+    if (!btn) return;
+    setResonanceMode(btn.dataset.mode);
+  });
+}
+
+if (poetryLevelInput) {
+  setPoetryLabel(Number(poetryLevelInput.value) || 1);
+  poetryLevelInput.addEventListener('input', (event) => {
+    const level = Number(event.target.value) || 1;
+    setPoetryLabel(level);
+  });
+}
+
+const loadedMemory = loadMemory();
+wordMemory = loadedMemory.words || {};
+linkMemory = loadedMemory.links || {};
+lastPivot = loadedMemory.lastPivot || '';
+renderWordcloud();
 renderHistory();
+setResonanceMode(RESONANCE_MODE);
 bootstrapRuntimeConfig().finally(() => resetConversation());
-setInterval(cleanupWords, 2000);
-requestAnimationFrame(animateWords);
 requestAnimationFrame(animateGraph);

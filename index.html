@@ -24,6 +24,21 @@
       </button>
       <span class="small" id="dataMode">Mode API: —</span>
     </div>
+    <div class="row dense" aria-label="Réglages de résonance">
+      <div>
+        <label for="resonanceMode">Mode de formulation</label>
+        <div id="resonanceMode" class="pill-group" role="group" aria-label="Mode de formulation">
+          <button type="button" class="pill is-active" data-mode="raw">Chat brut</button>
+          <button type="button" class="pill" data-mode="enriched">Résonance enrichie</button>
+        </div>
+        <p class="small">Choisis entre le message brut ou un prompt résonant avant envoi à Gemma.</p>
+      </div>
+      <div>
+        <label for="poetryLevel">Niveau de poétisation</label>
+        <input type="range" id="poetryLevel" min="0" max="2" step="1" value="1" />
+        <div class="small" id="poetryLabel">Léger — phrases plus souples</div>
+      </div>
+    </div>
     <textarea id="msg" placeholder="Écris ce qui te traverse..."></textarea>
     <div class="row">
       <div>
@@ -39,7 +54,10 @@
         <input type="number" id="max_tokens" min="32" max="2000" value="256" />
       </div>
     </div>
-    <button id="sendBtn">Envoyer</button>
+    <div class="row actions-row">
+      <button id="sendBtn">Déposer</button>
+      <button id="integrateBtn" class="ghost-btn" type="button">Intégrer la résonance</button>
+    </div>
     <button id="resetBtn" style="margin-top:8px; background:#272734;">Réinitialiser</button>
   </section>
 
@@ -52,11 +70,12 @@
       </div>
       <span class="badge" id="metaphorBadge">—</span>
     </div>
+    <div class="wordcloud-actions">
+      <button id="releasePivot" class="ghost-btn" type="button">Laisser partir le pivot</button>
+      <button id="wordMemoryReset" class="ghost-btn" type="button">Réinitialiser la mémoire</button>
+    </div>
     <div id="wordcloud-container" class="wordcloud">
-      <div class="orbit orbit-pivot" aria-hidden="true"></div>
-      <div class="orbit orbit-noyau" aria-hidden="true"></div>
-      <div class="orbit orbit-peripherie" aria-hidden="true"></div>
-      <div class="placeholder small">En attente des premiers mots...</div>
+      <div class="placeholder small">— En attente des premiers mots résonants…</div>
     </div>
   </section>
 
