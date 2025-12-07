@@ -1,4 +1,5 @@
 node_modules
+resonance-api/node_modules
 .vercel
 npm-debug.log*
 .DS_Store

@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: Le Ciel Étoilé — API Résonante
+  version: "1.0.0"
+  description: |
+    API Express pour tracer une matrice de co-occurrence inspirée de Courtial & Callon,
+    avec réponse poétique mais neutre.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/ciel:
+    post:
+      summary: Analyse textuelle et mise à jour de la matrice co-occurrente
+      operationId: postCiel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  description: Texte en français à analyser
+              required:
+                - text
+      responses:
+        '200':
+          description: Résumé de la constellation générée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CielResponse'
+        '400':
+          description: Requête invalide
+  /api/ciel/image:
+    post:
+      summary: Point d'entrée réservé pour une future génération d'image
+      operationId: postCielImage
+      responses:
+        '200':
+          description: Stub confirmant l'absence de génération graphique
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  status:
+                    type: string
+  /api/reset:
+    post:
+      summary: Réinitialise la mémoire (fréquences, matrice, historique)
+      operationId: resetCiel
+      responses:
+        '200':
+          description: Confirmation de remise à zéro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/state:
+    get:
+      summary: Retourne l'état brut de la matrice et des fréquences (debug)
+      operationId: getState
+      responses:
+        '200':
+          description: État courant de l'API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matrix:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                  freq:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistorySnapshot'
+components:
+  schemas:
+    Orbit:
+      type: object
+      properties:
+        mot:
+          type: string
+        force:
+          type: integer
+    CielResponse:
+      type: object
+      properties:
+        pivot:
+          type: string
+        orbites:
+          type: array
+          items:
+            $ref: '#/components/schemas/Orbit'
+        freqPivot:
+          type: integer
+        centralite:
+          type: integer
+        variation:
+          type: integer
+        metaphore:
+          type: string
+        constellation:
+          type: array
+          items:
+            type: string
+    HistorySnapshot:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        centrality:
+          type: object
+          additionalProperties:
+            type: integer
+        freq:
+          type: object
+          additionalProperties:
+            type: integer
