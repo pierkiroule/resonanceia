@@ -1,0 +1,97 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API ÉCHO",
+    "version": "1.0.0",
+    "description": "Analyse textuelle frugale (Courtial & Callon) pour extraire pivot, cooccurrences, noyau et périphérie. Aucune IA externe."
+  },
+  "servers": [
+    {
+      "url": "https://resonanceia.vercel.app",
+      "description": "Déploiement Vercel"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Développement local"
+    }
+  ],
+  "paths": {
+    "/api/echo": {
+      "post": {
+        "summary": "Analyse un texte et renvoie le pivot, le noyau et la périphérie",
+        "operationId": "postEcho",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Texte ou message à analyser"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "Alias de message pour compatibilité"
+                    }
+                  },
+                  "oneOf": [
+                    { "required": ["message"] },
+                    { "required": ["text"] }
+                  ]
+                }
+              }
+            }
+          },
+        "responses": {
+          "200": {
+            "description": "Analyse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EchoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide"
+          },
+          "405": {
+            "description": "Méthode non supportée"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EchoResponse": {
+        "type": "object",
+        "properties": {
+          "pivot": { "type": "string" },
+          "noyau": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "peripherie": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "centralite": { "type": "integer" },
+          "delta": { "type": "string", "enum": ["stabilité", "variation"] },
+          "cooccurrences": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" },
+            "description": "Clés au format pivot-mot"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

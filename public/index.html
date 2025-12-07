@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API ÉCHO – transforme ton IA en IA résonante</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f8;
+      color: #1c1c1e;
+    }
+
+    header {
+      padding: 28px 20px 10px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+
+    p.subtitle {
+      margin: 8px auto 0;
+      max-width: 720px;
+      color: #4a4a4d;
+      line-height: 1.5;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      padding: 0 20px 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    section {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+      border: 1px solid #ececf0;
+    }
+
+    section h2 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #222;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .option {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e6e6ea;
+      background: #fafbff;
+    }
+
+    .option label {
+      cursor: pointer;
+      user-select: none;
+      line-height: 1.4;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      margin-top: 10px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #d6d6de;
+      font-size: 15px;
+    }
+
+    #preview {
+      background: #0f172a;
+      color: #e5e7eb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      min-height: 120px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 0.05s ease, box-shadow 0.1s ease;
+      background: #1e293b;
+      color: #f8fafc;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+      box-shadow: none;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    pre, code {
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 10px;
+      overflow-x: auto;
+      display: block;
+      white-space: pre-wrap;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px 0 18px;
+      color: #555;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>API ÉCHO – Configure ton GPT résonant</h1>
+    <p class="subtitle">
+      Choisis ton intention, ton public, ton style de réponse et l’intensité de résonance.
+      Nous générons automatiquement trois blocs prêts à copier-coller dans GPT Builder : le Prompt Système ÉCHO, le Prompt de configuration et le YAML d’Action API.
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Comment ça marche ?</h2>
+      <p style="line-height: 1.6; margin: 0 0 10px; color: #3a3a3c;">
+        Configure ton filtre de résonance en quelques clics et récupère trois blocs prêts à coller dans GPT Builder :
+        Prompt Système, Prompt de configuration et YAML d’Action.
+        Aucun compte supplémentaire, aucune base de données : tout reste dans ton navigateur.
+      </p>
+      <ul style="padding-left: 18px; line-height: 1.5; color: #3a3a3c; margin: 0;">
+        <li>Sélectionne les intentions, le public, le style et l’intensité.</li>
+        <li>Ajoute un nom de filtre si besoin.</li>
+        <li>Copie le Prompt Système, le Prompt de configuration et le YAML pour l’Action.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>1. L’IA invitera surtout la personne à…</h2>
+      <div class="options" id="intentions">
+        <div class="option"><input type="checkbox" id="exprimer" value="exprimer"><label for="exprimer">✍ Mettre en mots ce qui la traverse</label></div>
+        <div class="option"><input type="checkbox" id="comprendre" value="comprendre"><label for="comprendre">🔍 Comprendre ce qui se joue</label></div>
+        <div class="option"><input type="checkbox" id="recul" value="recul"><label for="recul">🔄 Prendre du recul / voir autrement</label></div>
+        <div class="option"><input type="checkbox" id="reguler" value="reguler"><label for="reguler">🌬 Se réguler / revenir au calme</label></div>
+        <div class="option"><input type="checkbox" id="explorer" value="explorer"><label for="explorer">🌱 Explorer / imaginer d’autres possibles</label></div>
+        <div class="option"><input type="checkbox" id="identifier" value="identifier"><label for="identifier">🧭 Identifier ce qui compte pour elle</label></div>
+        <div class="option"><input type="checkbox" id="transformer" value="transformer"><label for="transformer">♻ Transformer son récit</label></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Public et contexte d’usage</h2>
+      <div class="options" id="publics">
+        <div class="option"><input type="checkbox" id="individuel" value="individuel"><label for="individuel">🙋 Individuel</label></div>
+        <div class="option"><input type="checkbox" id="famille" value="famille"><label for="famille">🏠 Famille</label></div>
+        <div class="option"><input type="checkbox" id="couple" value="couple"><label for="couple">💬 Couple</label></div>
+        <div class="option"><input type="checkbox" id="groupe" value="groupe"><label for="groupe">🧑‍🤝‍🧑 Groupe</label></div>
+        <div class="option"><input type="checkbox" id="scolaire" value="scolaire"><label for="scolaire">🏫 Scolaire / éducatif</label></div>
+        <div class="option"><input type="checkbox" id="pro" value="pro"><label for="pro">👔 Professionnel</label></div>
+        <div class="option"><input type="checkbox" id="therapie" value="therapie"><label for="therapie">🧩 Thérapeutique (cadre accompagné)</label></div>
+        <div class="option"><input type="checkbox" id="entre_seances" value="entre_seances"><label for="entre_seances">🪢 Entre les séances (continuité)</label></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Style de réponse souhaité</h2>
+      <div class="options" id="styles">
+        <div class="option"><input type="checkbox" id="neutre" value="neutre"><label for="neutre">📄 Neutre et factuel</label></div>
+        <div class="option"><input type="checkbox" id="empathique" value="empathique"><label for="empathique">🪞 Empathique</label></div>
+        <div class="option"><input type="checkbox" id="psycho" value="psycho"><label for="psycho">📚 Psychoéducatif</label></div>
+        <div class="option"><input type="checkbox" id="socratique" value="socratique"><label for="socratique">💡 Socratique (questions)</label></div>
+        <div class="option"><input type="checkbox" id="symbolique" value="symbolique"><label for="symbolique">🎭 Métaphorique / symbolique</label></div>
+        <div class="option"><input type="checkbox" id="corporel" value="corporel"><label for="corporel">🧘 Sensoriel / corporel</label></div>
+        <div class="option"><input type="checkbox" id="poetique" value="poetique"><label for="poetique">🪶 Poétique / onirique</label></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Intensité de la résonance</h2>
+      <div class="radio-group" id="intensite">
+        <label><input type="radio" name="intensite" value="legere"> Légère — écho très discret</label>
+        <label><input type="radio" name="intensite" value="moderee"> Modérée — juste ce qu’il faut</label>
+        <label><input type="radio" name="intensite" value="haute"> Haute — résonance très métaphorique</label>
+      </div>
+
+      <div class="field">
+        <label for="filterName">Nom de votre filtre (facultatif)</label>
+        <input type="text" id="filterName" placeholder="Filtre Ado, Burn-out, Groupe..." />
+      </div>
+
+      <div class="actions">
+        <button id="generateBtn">Générer mes blocs ÉCHO</button>
+        <button class="secondary" id="copyPromptBtn">Copier le Prompt Système ÉCHO</button>
+        <button class="secondary" id="copyConfigBtn">Copier le Prompt de configuration</button>
+        <button class="secondary" id="copyYamlBtn">Copier le YAML Action</button>
+      </div>
+
+      <div class="field">
+        <h2>Résumé du filtre</h2>
+        <div id="preview">Sélectionne des options pour voir le filtre se dessiner.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Prompt Système ÉCHO</h2>
+      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Chaîne d’instructions à coller dans l’onglet “Instructions” du GPT Builder. Elle intègre automatiquement tes intentions, publics, styles et intensité.</p>
+      <textarea id="promptOutput" rows="12" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer ton prompt.</textarea>
+    </section>
+
+    <section>
+      <h2>Prompt de configuration GPT</h2>
+      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Texte prêt à coller dans une conversation avec le GPT Builder : il crée l’Action HTTP, colle le Prompt Système et nomme le GPT.</p>
+      <textarea id="configPromptOutput" rows="14" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer le prompt de configuration.</textarea>
+    </section>
+
+    <section>
+      <h2>YAML Action API ÉCHO</h2>
+      <p style="color:#3a3a3c; line-height:1.5; margin-top:0;">Bloc OpenAPI simplifié décrivant l’action HTTP. Tu peux le coller dans l’éditeur YAML/JSON du GPT Builder Actions.</p>
+      <textarea id="yamlOutput" rows="18" readonly style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; background:#0f172a; color:#e5e7eb; resize:vertical;">Clique sur "Générer" pour créer le YAML d’action.</textarea>
+    </section>
+
+    <section>
+      <h2>Tester l’écho extérieur</h2>
+      <p style="color:#3a3a3c; line-height:1.5; margin:0 0 8px;">Envoie un message pour voir le pivot, le noyau et la périphérie calculés sans IA externe.</p>
+      <textarea id="echoMessage" rows="4" placeholder="Partage un extrait de récit..." style="width:100%; padding:12px; border-radius:10px; border:1px solid #ececf0; font-family: inherit;"></textarea>
+      <div class="actions" style="margin-top:10px;">
+        <button id="testEchoBtn">Envoyer à l’API ÉCHO</button>
+      </div>
+      <div id="echoResult" style="margin-top:10px; background:#eef2ff; padding:10px; border-radius:10px; color:#1e1e2f; min-height:40px;">Aucun appel encore.</div>
+    </section>
+  </main>
+
+  <footer>API ÉCHO · Prête pour ChatGPT Actions via openapi.json</footer>
+
+  <script>
+    const BASE_API_URL = 'https://resonanceia.onrender.com/api/echo';
+
+    const groups = {
+      intentions: ['exprimer', 'comprendre', 'recul', 'reguler', 'explorer', 'identifier', 'transformer'],
+      publics: ['individuel', 'famille', 'couple', 'groupe', 'scolaire', 'pro', 'therapie', 'entre_seances'],
+      styles: ['neutre', 'empathique', 'psycho', 'socratique', 'symbolique', 'corporel', 'poetique']
+    };
+
+    function getSelectedValues(groupName) {
+      return groups[groupName]
+        .map((id) => document.getElementById(id))
+        .filter((el) => el && el.checked)
+        .map((el) => el.value);
+    }
+
+    function getSelectedIntensity() {
+      const radio = document.querySelector('input[name="intensite"]:checked');
+      return radio ? radio.value : '';
+    }
+
+    function updatePreview() {
+      const intentions = getSelectedValues('intentions');
+      const publics = getSelectedValues('publics');
+      const styles = getSelectedValues('styles');
+      const intensite = getSelectedIntensity();
+      const nom = document.getElementById('filterName').value.trim();
+
+      const lines = [
+        intentions.length ? `Intentions : ${intentions.join(', ')}` : 'Intentions : —',
+        publics.length ? `Publics : ${publics.join(', ')}` : 'Publics : —',
+        styles.length ? `Styles : ${styles.join(', ')}` : 'Styles : —',
+        intensite ? `Intensité : ${intensite}` : 'Intensité : —',
+        nom ? `Nom du filtre : ${nom}` : 'Nom du filtre : —'
+      ];
+
+      document.getElementById('preview').textContent = lines.join('\n');
+    }
+
+    function saveToLocalStorage(config) {
+      localStorage.setItem('echoConfig', JSON.stringify({ ...config }));
+    }
+
+    function loadFromLocalStorage() {
+      const raw = localStorage.getItem('echoConfig');
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        groups.intentions.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.checked = saved.intentions?.includes(id);
+        });
+        groups.publics.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.checked = saved.publics?.includes(id);
+        });
+        groups.styles.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.checked = saved.styles?.includes(id);
+        });
+        if (saved.intensite) {
+          const radio = document.querySelector(`input[name="intensite"][value="${saved.intensite}"]`);
+          if (radio) radio.checked = true;
+        }
+        if (saved.nom) {
+          document.getElementById('filterName').value = saved.nom;
+        }
+      } catch (err) {
+        console.warn('Impossible de relire la configuration stockée', err);
+      }
+      updatePreview();
+    }
+
+    function generateConfig() {
+      const config = {
+        intentions: getSelectedValues('intentions'),
+        publics: getSelectedValues('publics'),
+        styles: getSelectedValues('styles'),
+        intensite: getSelectedIntensity(),
+        nom: document.getElementById('filterName').value.trim() || null
+      };
+
+      saveToLocalStorage(config);
+      updatePreview();
+
+      const systemPrompt = generateSystemPrompt(config);
+      const configPrompt = generateConfigurationPrompt(systemPrompt, config);
+      const yamlAction = generateYamlAction(config);
+
+      document.getElementById('promptOutput').value = systemPrompt;
+      document.getElementById('configPromptOutput').value = configPrompt;
+      document.getElementById('yamlOutput').value = yamlAction;
+
+      return { config, systemPrompt, configPrompt, yamlAction };
+    }
+
+    const labels = {
+      intentions: {
+        exprimer: 'inviter à mettre en mots ce qui la traverse',
+        comprendre: 'aider à comprendre ce qui se joue',
+        recul: 'proposer de prendre du recul',
+        reguler: 'contribuer à la régulation et au retour au calme',
+        explorer: 'ouvrir des possibles et explorer',
+        identifier: 'identifier ce qui compte pour elle',
+        transformer: 'accompagner la transformation du récit'
+      },
+      publics: {
+        individuel: 'individuel',
+        famille: 'famille',
+        couple: 'couple',
+        groupe: 'groupe',
+        scolaire: 'scolaire / éducatif',
+        pro: 'professionnel',
+        therapie: 'thérapeutique',
+        entre_seances: 'entre les séances'
+      },
+      styles: {
+        neutre: 'neutre et factuel',
+        empathique: 'empathique',
+        psycho: 'psychoéducatif',
+        socratique: 'socratique (questions)',
+        symbolique: 'symbolique / métaphorique',
+        corporel: 'sensoriel / corporel',
+        poetique: 'poétique / onirique'
+      }
+    };
+
+    const intensiteDescriptions = {
+      legere: 'Légère — reformulation simple et écho discret.',
+      moderee: 'Modérée — suggestions métaphoriques modérées.',
+      haute: 'Haute — liberté poétique, symbolique et sensorielle.'
+    };
+
+    function formatList(values, groupKey) {
+      if (!values.length) return 'non précisé';
+      return values.map((val) => labels[groupKey]?.[val] || val).join(', ');
+    }
+
+    function generateSystemPrompt(config) {
+      const intentionsText = formatList(config.intentions, 'intentions');
+      const publicsText = formatList(config.publics, 'publics');
+      const stylesText = formatList(config.styles, 'styles');
+      const intensiteText = intensiteDescriptions[config.intensite] || 'non précisée (légère, modérée ou haute).';
+
+      const lines = [
+        '===== PROMPT SYSTÈME ÉCHO =====',
+        "Tu fonctionnes dans l’Espace de l’Écho.",
+        `Ton rôle est de favoriser : ${intentionsText}.`,
+        `Tu t’adresses principalement à : ${publicsText}.`,
+        `Tu t’exprimes dans un style : ${stylesText}.`,
+        `Intensité de la résonance : ${intensiteText}.`,
+        '',
+        'Principes relationnels :',
+        '- Tu reformules et résonnes plutôt que d’expliquer.',
+        "- Tu n’interprètes pas à la place de la personne.",
+        "- Tu n’es pas un thérapeute ni un médecin, mais une médiation.",
+        '- Tu laisses l’utilisateur libre de ses interprétations.'
+      ];
+
+      if (config.styles.includes('symbolique')) {
+        lines.push('Tu peux évoquer images, symboles et constellations émotionnelles.');
+      }
+      if (config.styles.includes('poetique')) {
+        lines.push('Tu peux t’autoriser un langage métaphorique et suggestif.');
+      }
+      if (config.styles.includes('corporel')) {
+        lines.push('Tu peux parfois ramener vers les sensations et le ressenti corporel.');
+      }
+
+      lines.push('', '===== FIN PROMPT SYSTÈME =====');
+      return lines.join('\n');
+    }
+
+    function generateConfigurationPrompt(systemPrompt, config) {
+      const publicsText = formatList(config.publics, 'publics');
+      const stylesText = formatList(config.styles, 'styles');
+      const intensiteText = config.intensite || 'non précisée';
+      const nom = config.nom || 'ÉCHO personnalisé';
+
+      return [
+        '===== PROMPT CONFIGURATION GPT ÉCHO =====',
+        'Je veux que tu configures ce GPT comme assistant résonant connecté à une API externe.',
+        '',
+        `Nom du GPT : IA ÉCHO – ${nom}`,
+        `Description : GPT configuré pour accompagner ${publicsText} avec une résonance ${stylesText} et une intensité ${intensiteText}.`,
+        '',
+        '1) Colle le texte suivant dans “Instructions” (prompt système) :',
+        systemPrompt,
+        '',
+        '2) Crée une Action HTTP nommée "echo_exterieur" avec les paramètres suivants :',
+        '- Méthode : POST',
+        '- URL : https://resonanceia.onrender.com/api/echo',
+        '- Content-Type : application/json',
+        '- Corps JSON :',
+        '  {',
+        '    "message": "texte de l’utilisateur",',
+        `    "intentions": ${JSON.stringify(config.intentions)},`,
+        `    "publics": ${JSON.stringify(config.publics)},`,
+        `    "styles": ${JSON.stringify(config.styles)},`,
+        `    "intensite": "${config.intensite || ''}"`,
+        '  }',
+        '',
+        '3) Utilise cette Action pour demander un “Écho extérieur” après avoir reçu le message de l’utilisateur, puis intègre cet écho dans ta réponse, sans citer le JSON brut.',
+        '',
+        '===== FIN PROMPT CONFIGURATION ====='
+      ].join('\n');
+    }
+
+    function generateYamlAction(config) {
+      const exampleBody = {
+        message: 'Texte de l’utilisateur',
+        intentions: config.intentions,
+        publics: config.publics,
+        styles: config.styles,
+        intensite: config.intensite
+      };
+
+      return [
+        'openapi: 3.1.0',
+        'info:',
+        '  title: API ÉCHO – Résonance extérieure',
+        '  version: 1.0.0',
+        'servers:',
+        '  - url: https://resonanceia.onrender.com',
+        'paths:',
+        '  /api/echo:',
+        '    post:',
+        '      operationId: echoExterieur',
+        "      summary: Analyse Courtial frugale et renvoi d'un écho extérieur",
+        '      requestBody:',
+        '        required: true',
+        '        content:',
+        '          application/json:',
+        '            schema:',
+        '              type: object',
+        '              properties:',
+        '                message:',
+        '                  type: string',
+        '                intentions:',
+        '                  type: array',
+        '                  items:',
+        '                    type: string',
+        '                publics:',
+        '                  type: array',
+        '                  items:',
+        '                    type: string',
+        '                styles:',
+        '                  type: array',
+        '                  items:',
+        '                    type: string',
+        '                intensite:',
+        '                  type: string',
+        "              required: ['message']",
+        '              example: |',
+        `                ${JSON.stringify(exampleBody, null, 2).replace(/\n/g, '\n                ')}`,
+        '      responses:',
+        "        '200':",
+        '          description: Écho calculé',
+        '          content:',
+        '            application/json:',
+        '              schema:',
+        '                type: object',
+        '                properties:',
+        '                  pivot:',
+        '                    type: string',
+        '                  noyau:',
+        '                    type: array',
+        '                    items:',
+        '                      type: string',
+        '                  peripherie:',
+        '                    type: array',
+        '                    items:',
+        '                      type: string',
+        '                  centralite:',
+        '                    type: integer',
+        '                  delta:',
+        '                    type: string',
+        '                  tags:',
+        '                    type: array',
+        '                    items:',
+        '                      type: string'
+      ].join('\n');
+    }
+
+    function copyToClipboard(text) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).catch(() => alert('Copie impossible dans ce navigateur.'));
+    }
+
+    function renderEchoResult(payload) {
+      const container = document.getElementById('echoResult');
+      if (!payload) {
+        container.textContent = 'Pas de réponse reçue.';
+        return;
+      }
+
+      if (payload.echo) {
+        container.textContent = payload.echo;
+        return;
+      }
+
+      const pivot = payload.pivot || '—';
+      const tags = Array.isArray(payload.tags) ? payload.tags.join(', ') : '—';
+      const delta = payload.delta || '—';
+      container.textContent = `Écho extérieur : ${pivot} + ${tags} (delta ${delta})`;
+    }
+
+    async function callEchoApi() {
+      const message = document.getElementById('echoMessage').value.trim();
+      try {
+        const response = await fetch(BASE_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            intentions: getSelectedValues('intentions'),
+            publics: getSelectedValues('publics'),
+            styles: getSelectedValues('styles'),
+            intensite: getSelectedIntensity()
+          })
+        });
+        const data = await response.json();
+        renderEchoResult(data);
+      } catch (err) {
+        document.getElementById('echoResult').textContent = 'Erreur lors de l’appel API.';
+        console.error(err);
+      }
+    }
+
+    function attachListeners() {
+      document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach((input) => {
+        input.addEventListener('change', generateConfig);
+      });
+      document.getElementById('filterName').addEventListener('input', generateConfig);
+
+      document.getElementById('generateBtn').addEventListener('click', () => {
+        generateConfig();
+      });
+
+      document.getElementById('copyPromptBtn').addEventListener('click', () => {
+        const { systemPrompt } = generateConfig();
+        copyToClipboard(systemPrompt);
+      });
+
+      document.getElementById('copyConfigBtn').addEventListener('click', () => {
+        const { configPrompt } = generateConfig();
+        copyToClipboard(configPrompt);
+      });
+
+      document.getElementById('copyYamlBtn').addEventListener('click', () => {
+        const { yamlAction } = generateConfig();
+        copyToClipboard(yamlAction);
+      });
+
+      document.getElementById('testEchoBtn').addEventListener('click', () => {
+        callEchoApi();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFromLocalStorage();
+      attachListeners();
+      updatePreview();
+      generateConfig();
+    });
+  </script>
+</body>
+</html>
