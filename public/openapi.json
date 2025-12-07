@@ -1,0 +1,106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API ÉCHO",
+    "version": "1.0.0",
+    "description": "Analyse textuelle résonante pour générer pivot, orbites et métaphore. Prête pour ChatGPT Actions."
+  },
+  "servers": [
+    {
+      "url": "https://resonanceia.vercel.app",
+      "description": "Déploiement Vercel"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Développement local"
+    }
+  ],
+  "paths": {
+    "/api/echo": {
+      "post": {
+        "summary": "Analyse un texte et renvoie la constellation résonante",
+        "operationId": "postEcho",
+          "parameters": [
+            {
+              "name": "token",
+              "in": "query",
+              "required": false,
+              "description": "Token simple pour accéder à l'API (optionnel)",
+              "schema": { "type": "string" }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "description": "Texte ou message à analyser"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Alias de text, accepté par les intégrations GPT"
+                    }
+                  },
+                  "oneOf": [
+                    { "required": ["text"] },
+                    { "required": ["message"] }
+                  ]
+                }
+              }
+            }
+          },
+        "responses": {
+          "200": {
+            "description": "Analyse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EchoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide"
+          },
+          "405": {
+            "description": "Méthode non supportée"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Orbit": {
+        "type": "object",
+        "properties": {
+          "mot": { "type": "string" },
+          "force": { "type": "integer" }
+        }
+      },
+      "EchoResponse": {
+        "type": "object",
+        "properties": {
+          "pivot": { "type": "string" },
+          "orbites": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Orbit" }
+          },
+          "freqPivot": { "type": "integer" },
+          "centralite": { "type": "integer" },
+          "variation": { "type": "integer" },
+          "metaphore": { "type": "string" },
+          "constellation": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
