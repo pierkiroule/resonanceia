@@ -17,6 +17,37 @@
 
   <main class="container">
     <section class="card">
+      <div class="card-header">
+        <h2>Tutoriel minimal – URL unique à partager</h2>
+        <p class="lede">Donnez simplement cette URL à GPT Builder : il pourra lire la page, récupérer le QCM et le code d’Action.</p>
+      </div>
+      <div class="form-grid">
+        <div class="full-row">
+          <label for="tutorial-url" class="input-label">URL à partager</label>
+          <input id="tutorial-url" type="text" readonly />
+          <button class="ghost" data-copy="tutorial-url">Copier l’URL</button>
+        </div>
+        <div class="full-row">
+          <h3>Code d’Action prêt à coller</h3>
+          <textarea id="action-snippet" readonly rows="8"></textarea>
+          <button class="ghost" data-copy="action-snippet">Copier le code d’Action</button>
+        </div>
+        <div class="full-row">
+          <h3>Questions QCM que GPT peut lire</h3>
+          <ul>
+            <li>Nom du GPT et description brève.</li>
+            <li>Voix / registre : poétique, didactique ou pragmatique.</li>
+            <li>Structure de sortie : texte libre, puces ou petit JSON.</li>
+            <li>Éléments à inclure : silences, allusions mythologiques, corps, tags.</li>
+            <li>Fonctionnalités à activer/désactiver : recherche web, images, code interpreter.</li>
+            <li>URL d’action API (défaut : /api/echo de cette page).</li>
+          </ul>
+          <p class="lede">Le chat connecté à l’appli peut charger cette URL, lire ces questions et générer la trame sans autre saisie.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Paramètres du filtre</h2>
       <form id="filter-form" class="form-grid">
         <div>
@@ -411,6 +442,27 @@
       ].join('\n');
     }
 
+    function hydrateTutorial({ apiBase }) {
+      const tutorialUrlInput = document.getElementById('tutorial-url');
+      const actionSnippet = document.getElementById('action-snippet');
+
+      if (tutorialUrlInput) {
+        tutorialUrlInput.value = window.location.href;
+      }
+
+      if (actionSnippet) {
+        actionSnippet.value = [
+          'Nom de l’Action : echo_exterieur',
+          'Méthode : POST',
+          `URL : ${apiBase}/api/echo`,
+          'Headers : Content-Type: application/json',
+          'Corps : { "message": "texte utilisateur" }',
+          'Affichage : ne montrer que le champ poétique/echo + mention « résonance issue de l’API ÉCHO ».',
+          'OpenAPI : disponible sur /openapi.json'
+        ].join('\n');
+      }
+    }
+
     function updateOutputs() {
       const intentions = getSelectedValues('intentions');
       const publics = getSelectedValues('publics');
@@ -435,6 +487,8 @@
       ];
       const namePart = filtreNom ? `Filtre nommé : ${filtreNom}.` : 'Filtre sans nom explicite.';
       resumeEl.textContent = `${resumeParts.join(' | ')}. ${namePart}`;
+
+      hydrateTutorial({ apiBase });
     }
 
     function updateTrame() {
