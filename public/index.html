@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IA ÉCHO – Générateur de prompts</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ÉCHO – API et Générateur de prompts</title>
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <header class="hero">
     <div class="hero-content">
       <p class="eyebrow">Webapp frugale</p>
-      <h1>IA ÉCHO – Générateur & API extérieure</h1>
-      <p class="lede">Configurez votre filtre résonant et déployez une Action API unique sur Render.</p>
+      <h1>ÉCHO – une seule API, zéro IA externe</h1>
+      <p class="lede">Configurez votre filtre résonant et obtenez les blocs prêts à coller dans GPT Builder.</p>
     </div>
   </header>
 
@@ -22,46 +22,46 @@
         <div>
           <h3>Intentions</h3>
           <div class="checkbox-group" data-name="intentions">
-            <label><input type="checkbox" value="exprimer" checked> exprimer</label>
-            <label><input type="checkbox" value="clarifier"> clarifier</label>
-            <label><input type="checkbox" value="apaiser"> apaiser</label>
-            <label><input type="checkbox" value="prendre du recul"> prendre du recul</label>
+            <label><input type="checkbox" value="exprimer" checked /> exprimer</label>
+            <label><input type="checkbox" value="clarifier" /> clarifier</label>
+            <label><input type="checkbox" value="apaiser" /> apaiser</label>
+            <label><input type="checkbox" value="prendre du recul" /> prendre du recul</label>
           </div>
         </div>
 
         <div>
           <h3>Publics</h3>
           <div class="checkbox-group" data-name="publics">
-            <label><input type="checkbox" value="ado"> ado</label>
-            <label><input type="checkbox" value="adulte" checked> adulte</label>
-            <label><input type="checkbox" value="parent"> parent</label>
-            <label><input type="checkbox" value="couple"> couple</label>
-            <label><input type="checkbox" value="famille"> famille</label>
+            <label><input type="checkbox" value="ado" /> ado</label>
+            <label><input type="checkbox" value="adulte" checked /> adulte</label>
+            <label><input type="checkbox" value="parent" /> parent</label>
+            <label><input type="checkbox" value="couple" /> couple</label>
+            <label><input type="checkbox" value="famille" /> famille</label>
           </div>
         </div>
 
         <div>
           <h3>Styles</h3>
           <div class="checkbox-group" data-name="styles">
-            <label><input type="checkbox" value="symbolique"> symbolique</label>
-            <label><input type="checkbox" value="corporel"> corporel</label>
-            <label><input type="checkbox" value="poetique" checked> poetique</label>
-            <label><input type="checkbox" value="cognitif"> cognitif</label>
+            <label><input type="checkbox" value="symbolique" /> symbolique</label>
+            <label><input type="checkbox" value="corporel" /> corporel</label>
+            <label><input type="checkbox" value="poetique" checked /> poétique</label>
+            <label><input type="checkbox" value="cognitif" /> cognitif</label>
           </div>
         </div>
 
         <div>
           <h3>Intensité</h3>
           <div class="radio-group" data-name="intensite">
-            <label><input type="radio" name="intensite" value="legere" checked> légère</label>
-            <label><input type="radio" name="intensite" value="moderee"> modérée</label>
-            <label><input type="radio" name="intensite" value="haute"> haute</label>
+            <label><input type="radio" name="intensite" value="legere" checked /> légère</label>
+            <label><input type="radio" name="intensite" value="moderee" /> modérée</label>
+            <label><input type="radio" name="intensite" value="haute" /> haute</label>
           </div>
         </div>
 
         <div class="full-row">
           <label for="filtre-nom" class="input-label">Nom du filtre (optionnel)</label>
-          <input id="filtre-nom" type="text" placeholder="Prems Écho Intérieur" />
+          <input id="filtre-nom" type="text" placeholder="Filtre ÉCHO personnel" />
         </div>
 
         <div class="full-row">
@@ -85,7 +85,7 @@
 
     <section class="card">
       <div class="card-header">
-        <h2>Prompt de configuration (GPT Builder)</h2>
+        <h2>Prompt GPT Action</h2>
         <button class="ghost" data-copy="config-prompt">Copier</button>
       </div>
       <textarea id="config-prompt" readonly></textarea>
@@ -93,7 +93,7 @@
 
     <section class="card">
       <div class="card-header">
-        <h2>Bloc OpenAPI / JSON</h2>
+        <h2>Bloc OpenAPI (JSON)</h2>
         <button class="ghost" data-copy="openapi-json">Copier</button>
       </div>
       <textarea id="openapi-json" readonly></textarea>
@@ -101,7 +101,7 @@
 
     <section class="card">
       <div class="card-header">
-        <h2>Tester rapidement l’API ÉCHO</h2>
+        <h2>Tester /api/echo</h2>
         <button class="ghost" id="call-api">Envoyer</button>
       </div>
       <label for="test-message" class="input-label">Message utilisateur</label>
@@ -111,14 +111,14 @@
   </main>
 
   <footer class="footer">
-    <p>Déployable sur Render – API /api/echo et page statique sur /</p>
+    <p>Déployable sur Render – serveur Express + page statique.</p>
   </footer>
 
   <script>
     const intensityDescriptions = {
-      legere: "Résonance légère, suggestions délicates.",
-      moderee: "Résonance modérée, reformulations engagées sans insistance.",
-      haute: "Résonance haute, présence marquée mais respectueuse."
+      legere: 'Résonance légère, suggestions délicates.',
+      moderee: 'Résonance modérée, reformulations engagées sans insistance.',
+      haute: 'Résonance haute, présence marquée mais respectueuse.'
     };
 
     const form = document.getElementById('filter-form');
@@ -155,86 +155,79 @@
 
       const lines = [
         '===== PROMPT SYSTÈME ÉCHO =====',
-        'Tu fonctionnes dans l’Espace de l’Écho.',
+        'Tu fonctionnes dans l’Espace de l’Écho : une aide à la reformulation et à la résonance empathique.',
+        'Aucune connexion à des modèles externes ; tu utilises uniquement ton raisonnement et l’API locale ÉCHO.',
         '',
-        `Ton rôle est de favoriser : ${intentionsText}.`,
-        `Tu t’adresses principalement à : ${publicsText}.`,
-        `Tu t’exprimes dans un style : ${stylesText}.`,
-        `Intensité de la résonance : ${intensityText}.`,
+        `Intentions principales : ${intentionsText}.`,
+        `Publics privilégiés : ${publicsText}.`,
+        `Style recommandé : ${stylesText}.`,
+        `Intensité : ${intensityText}.`,
         '',
         'Principes relationnels :',
-        '- Tu reformules et résonnes plutôt que d’expliquer.',
-        '- Tu n’interprètes pas à la place de la personne.',
-        '- Tu n’es pas un thérapeute ni un médecin, mais une médiation.',
-        '- Tu laisses l’utilisateur libre de ses interprétations.'
+        '- Reformuler et résonner plutôt qu’expliquer.',
+        '- Ne pas interpréter à la place de la personne.',
+        '- Ne pas fournir de diagnostic ni de conseil médical.',
+        '- Laisser l’utilisateur libre de ses interprétations.',
+        '',
+        'Action unique autorisée : « echo_exterieur » (POST /api/echo).',
+        '- Utiliser uniquement quand la personne demande un écho extérieur ou une vérification de ses mots.',
+        '- Ne jamais afficher le JSON brut, seulement intégrer le résultat dans la réponse.',
+        '===== FIN PROMPT SYSTÈME ====='
       ];
 
       if (styles.includes('symbolique')) {
-        lines.push('Tu peux évoquer des images, symboles et constellations émotionnelles.');
+        lines.splice(-2, 0, 'Tu peux évoquer des images et constellations symboliques si cela sert la résonance.');
       }
       if (styles.includes('poetique')) {
-        lines.push('Tu peux t’autoriser un langage métaphorique et suggestif.');
+        lines.splice(-2, 0, 'Tu peux t’autoriser un langage métaphorique et suggestif.');
       }
       if (styles.includes('corporel')) {
-        lines.push('Tu peux parfois ramener vers les sensations et le ressenti corporel.');
+        lines.splice(-2, 0, 'Tu peux inviter à revenir aux sensations corporelles sans interprétation clinique.');
       }
 
-      lines.push('', 'Tu peux, si l’utilisateur le souhaite, demander un “écho extérieur” en appelant l’Action API connectée, puis intégrer ce retour dans ta réponse sans afficher le JSON brut.', '', '===== FIN PROMPT SYSTÈME =====');
-
       return lines.join('\n');
     }
 
-    function buildConfigPrompt({ intentions, publics, styles, intensite, filtreNom, systemPrompt }) {
+    function buildConfigPrompt({ intentions, publics, styles, intensite, filtreNom, systemPrompt, apiBase }) {
       const publicsText = buildListText(publics, 'les publics visés');
       const stylesText = buildListText(styles, 'les styles sélectionnés');
-      const filtre = filtreNom || 'Filtre Écho';
+      const filtre = filtreNom || 'Filtre ÉCHO';
 
-      const lines = [
-        '===== PROMPT CONFIGURATION ÉCHO =====',
-        'Je veux que tu configures ce GPT comme assistant résonant connecté à une API externe.',
+      return [
+        '===== PROMPT GPT ACTION =====',
+        'Objectif : configurer un GPT résonant avec une seule Action HTTP locale.',
+        `Nom du GPT : ${filtre}.`,
+        `Description : accompagne ${publicsText} dans un style ${stylesText} et une intensité ${intensite}.`,
         '',
-        `Nom du GPT : IA ÉCHO – ${filtre}`,
-        `Description : GPT configuré pour accompagner ${publicsText} avec une résonance ${stylesText} et une intensité ${intensite}.`,
-        '',
-        '1) Colle le texte suivant dans "Instructions" :',
+        '1) Dans « Instructions », coller le prompt système ci-dessous :',
         systemPrompt,
         '',
-        '2) Crée une Action HTTP nommée "echo_exterieur" avec :',
+        '2) Créer une Action nommée "echo_exterieur" :',
         '- Méthode : POST',
-        '- URL : https://resonanceia.onrender.com/api/echo',
-        '- Content-Type : application/json',
-        '- Corps JSON :',
-        '  {',
-        '    "message": "texte de l’utilisateur",',
-        '    "intentions": [...],',
-        '    "publics": [...],',
-        '    "styles": [...],',
-        '    "intensite": "..."',
-        '  }',
+        `- URL : ${apiBase}/api/echo`,
+        '- En-têtes : Content-Type: application/json',
+        '- Corps JSON : { "message": "texte de l’utilisateur" }',
         '',
-        '3) Lorsque l’utilisateur le demande ("fais un écho", "montre-moi l’écho extérieur"...), appelle cette Action, puis intègre l’écho dans ta réponse en langage naturel.',
-        '',
-        '===== FIN PROMPT CONFIGURATION ====='
-      ];
-
-      return lines.join('\n');
+        '3) Utilisation : quand l’utilisateur demande un écho extérieur, appeler l’Action puis intégrer pivot, noyau, périphérie, centralité, tags et métaphore dans ta réponse.',
+        'Pas d’autres endpoints, pas de simulateur ni de fallback IA.',
+        '===== FIN PROMPT GPT ACTION ====='
+      ].join('\n');
     }
 
-    function buildOpenApiJson() {
+    function buildOpenApiJson(apiBase) {
       const schema = {
         openapi: '3.1.0',
         info: {
-          title: 'API ÉCHO – Résonance extérieure',
-          version: '1.0.0'
+          title: 'API ÉCHO – Résonance locale',
+          version: '1.0.0',
+          description: 'Analyse statique locale : pivot, noyau, périphérie, cooccurrences.'
         },
-        servers: [
-          { url: 'https://resonanceia.onrender.com' }
-        ],
+        servers: [{ url: apiBase }],
         paths: {
           '/api/echo': {
             post: {
-              operationId: 'echoExterieur',
-              summary: "Analyse Courtial frugale et renvoi d'un écho extérieur",
+              operationId: 'echo_exterieur',
+              summary: "Analyse un message et renvoie l'écho structuré.",
               requestBody: {
                 required: true,
                 content: {
@@ -242,11 +235,7 @@
                     schema: {
                       type: 'object',
                       properties: {
-                        message: { type: 'string' },
-                        intentions: { type: 'array', items: { type: 'string' } },
-                        publics: { type: 'array', items: { type: 'string' } },
-                        styles: { type: 'array', items: { type: 'string' } },
-                        intensite: { type: 'string' }
+                        message: { type: 'string', description: 'Texte utilisateur à analyser' }
                       },
                       required: ['message']
                     }
@@ -259,7 +248,21 @@
                   content: {
                     'application/json': {
                       schema: {
-                        type: 'object'
+                        type: 'object',
+                        properties: {
+                          pivot: { type: 'string', nullable: true },
+                          noyau: { type: 'array', items: { type: 'string' } },
+                          peripherie: { type: 'array', items: { type: 'string' } },
+                          centralite: { type: 'number' },
+                          cooccurrences: {
+                            type: 'object',
+                            additionalProperties: { type: 'integer' }
+                          },
+                          tags: { type: 'array', items: { type: 'string' } },
+                          metaphore: { type: 'string' },
+                          echo: { type: 'string' }
+                        },
+                        required: ['noyau', 'peripherie', 'centralite', 'cooccurrences', 'tags', 'metaphore', 'echo']
                       }
                     }
                   }
@@ -279,10 +282,11 @@
       const styles = getSelectedValues('styles');
       const intensite = getIntensity();
       const filtreNom = document.getElementById('filtre-nom').value.trim();
+      const apiBase = window.location.origin;
 
       const systemPrompt = buildSystemPrompt({ intentions, publics, styles, intensite });
-      const configPrompt = buildConfigPrompt({ intentions, publics, styles, intensite, filtreNom, systemPrompt });
-      const openapiJson = buildOpenApiJson();
+      const configPrompt = buildConfigPrompt({ intentions, publics, styles, intensite, filtreNom, systemPrompt, apiBase });
+      const openapiJson = buildOpenApiJson(apiBase);
 
       systemPromptEl.value = systemPrompt;
       configPromptEl.value = configPrompt;
