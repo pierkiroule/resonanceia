@@ -110,6 +110,8 @@ pre {
 
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: center; }
 .row.dense { gap: 14px; }
+.actions-row { display: flex; gap: 10px; align-items: center; justify-content: flex-start; margin-top: 8px; }
+.actions-row button { width: auto; flex: 0 0 auto; }
 label { font-size: 13px; color: var(--muted); }
 
 .pill-group {
@@ -229,6 +231,7 @@ input[type="range"] {
   color: #eaf1ff;
   transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
 }
 
 .word-token:hover {

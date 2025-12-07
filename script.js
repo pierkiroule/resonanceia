@@ -3,6 +3,7 @@ const statusEl = document.getElementById('status');
 const echoPanel = document.getElementById('echoPanel');
 const sendBtn = document.getElementById('sendBtn');
 const resetBtn = document.getElementById('resetBtn');
+const integrateBtn = document.getElementById('integrateBtn');
 const messageInput = document.getElementById('msg');
 const temperatureInput = document.getElementById('temperature');
 const topPInput = document.getElementById('top_p');
@@ -10,6 +11,7 @@ const maxTokensInput = document.getElementById('max_tokens');
 const wordCloudEl = document.getElementById('wordcloud-container');
 const metaphorBadge = document.getElementById('metaphorBadge');
 const wordMemoryResetBtn = document.getElementById('wordMemoryReset');
+const releasePivotBtn = document.getElementById('releasePivot');
 const dataModeEl = document.getElementById('dataMode');
 const debugToggleBtn = document.getElementById('debugToggle');
 const nebiusStatusEl = document.getElementById('nebiusStatus');
@@ -35,6 +37,52 @@ const FRENCH_STOPWORDS = new Set([
   'je', 'j', 'suis', 'ai', 'de', 'le', 'la', 'les', 'du', 'des', 'et', 'en', 'au', 'aux',
   'un', 'une', 'd', 'dans', 'pour', 'par', 'que'
 ]);
+
+// Glossaires internes pour nourrir le prompt résonant
+const EMERGENCE_METAPHORS = [
+  'un filament de lumière qui se tisse dans la nuit',
+  'une source discrète qui affleure sous la pierre',
+  'un bourgeon encore fermé dans l’air frais',
+  'un sentier qui se dessine à mesure qu’on marche',
+  'une constellation qui se révèle lentement',
+  'une encre qui se déploie dans l’eau claire',
+  'un phare lointain qui pulse par intervalles',
+  'un cercle d’écho qui se propage dans une crique',
+  'une braise qui rougeoie sous la cendre',
+  'une fenêtre entrouverte sur un matin voilé',
+  'un fil fragile qui relie deux rives',
+  'un jardin encore endormi qui retient son souffle',
+];
+
+const SENSORY_RESONANCES = [
+  'un goût de pluie sur la langue',
+  'un parfum de terre après l’orage',
+  'le grain chaud d’un tissu contre la peau',
+  'une lumière bleuie au petit matin',
+  'un clapotis régulier contre la coque',
+  'un souffle tiède sur la nuque',
+  'le craquement d’un parquet ancien',
+  'une buée qui se pose sur la vitre',
+  'le froid d’une clé entre les doigts',
+  'un murmure au travers d’une porte entrouverte',
+  'une lueur d’ambre sur un bois poli',
+  'un éclat de voix qui retombe en douceur',
+];
+
+const THERAPEUTIC_PROMPTS = [
+  "Quand ce mot revient, qu'est-ce qu'il cherche à entourer ?",
+  "Quelles images se lèvent avec ce terme ?",
+  "Que voudrait dire ce silence autour de lui ?",
+  "Quelle nuance manque encore pour que cela respire ?",
+  "Si tu l'écoutais comme un murmure, que répondrait-il ?",
+  "Qu'est-ce qui frappe doucement derrière cette idée ?",
+  "Quelle texture prend ce sentiment quand tu le nommes ?",
+  "Quels contours se dessinent si tu le laisses flotter ?",
+  "Qu'est-ce qui cherche un passage à travers ces mots ?",
+  "Que se passe-t-il si tu le rapproches d’un autre mot cher ?",
+  "Où ce mot se dépose-t-il dans ton corps ?",
+  "Quelle couleur lui donnerais-tu à cet instant ?",
+];
 
 const SYSTEM_PROMPT = `Tu réponds en français, en posture d’écoute transverse.
 Tu ne commentes jamais ton raisonnement interne.
@@ -62,9 +110,11 @@ const METAPHOR_IMAGES = {
   ],
 };
 
+const RESONANCE_MEMORY_KEY = 'resonant-memory-v2';
 const WORD_MEMORY_KEY = 'resonant-word-memory';
 const WORD_FADE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 let wordMemory = {};
+let linkMemory = {};
 let lastPivot = '';
 
 function normalizeWord(word) {
@@ -80,25 +130,38 @@ function isStopword(word) {
 
 function loadMemory() {
   try {
+    const rawResonance = localStorage.getItem(RESONANCE_MEMORY_KEY);
+    if (rawResonance) {
+      const parsed = JSON.parse(rawResonance);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          words: parsed.words || {},
+          links: parsed.links || {},
+          lastPivot: parsed.lastPivot || '',
+        };
+      }
+    }
+
     const raw = localStorage.getItem(WORD_MEMORY_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return {};
-    return Object.entries(parsed).reduce((acc, [key, value]) => {
+    if (!raw) return { words: {}, links: {}, lastPivot: '' };
+    const parsedLegacy = JSON.parse(raw);
+    if (!parsedLegacy || typeof parsedLegacy !== 'object') return { words: {}, links: {}, lastPivot: '' };
+    const words = Object.entries(parsedLegacy).reduce((acc, [key, value]) => {
       if (value && typeof value.count === 'number' && typeof value.lastSeen === 'number') {
         acc[key] = { count: value.count, lastSeen: value.lastSeen };
       }
       return acc;
     }, {});
+    return { words, links: {}, lastPivot: '' };
   } catch (error) {
     console.warn('Mémoire locale corrompue, réinitialisation.', error);
-    return {};
+    return { words: {}, links: {}, lastPivot: '' };
   }
 }
 
 function saveMemory() {
   try {
-    localStorage.setItem(WORD_MEMORY_KEY, JSON.stringify(wordMemory));
+    localStorage.setItem(RESONANCE_MEMORY_KEY, JSON.stringify({ words: wordMemory, links: linkMemory, lastPivot }));
   } catch (error) {
     console.warn('Impossible de sauvegarder la mémoire locale', error);
   }
@@ -168,13 +231,28 @@ function summarizeResonance(history = []) {
   return `${line1}\n${line2}`;
 }
 
-function buildPrompt(dataEcho = {}, userMessage = '', options = {}) {
+function buildResonantPrompt(dataEcho = {}, userMessage = '', options = {}) {
   const { history = [], poetryLevel = 1 } = options;
   const summary = summarizeResonance(history);
-  const narrativeEcho = buildNarrativeEcho(dataEcho?.pivot, poetryLevel);
+  const pivot = dataEcho?.pivot || lastPivot || (history.slice(-1)[0]?.pivot ?? '');
+  const narrativeEcho = buildNarrativeEcho(pivot, poetryLevel);
   const metaphorLine = buildMetaphorLine(dataEcho?.metaphor, poetryLevel);
-  const openQuestion = buildOpenQuestion(dataEcho?.pivot);
+  const openQuestion = buildOpenQuestion(pivot);
   const poetryDescriptor = describePoetryLevel(poetryLevel);
+  const emergentList = filterWordList([pivot, ...(dataEcho?.noyau || []), ...(dataEcho?.peripherie || [])]);
+  const emergentFromMemory = !emergentList.length
+    ? Object.entries(wordMemory)
+      .sort(([, a], [, b]) => Number(b.count) - Number(a.count))
+      .slice(0, 3)
+      .map(([w]) => w)
+    : [];
+  const emergent = (emergentList.length ? emergentList.slice(0, 3) : emergentFromMemory).join(', ');
+  const emergentLine = emergent
+    ? `Mots émergents : ${emergent}.`
+    : 'Mots émergents : encore discrets.';
+  const sensoryLine = pickFromArray(SENSORY_RESONANCES);
+  const emergentMetaphor = pickFromArray(EMERGENCE_METAPHORS);
+  const therapeutic = pickFromArray(THERAPEUTIC_PROMPTS);
 
   return `------------------------------------------------------
 CONTEXTE DES RÉSONANCES PRÉCÉDENTES :
@@ -184,9 +262,16 @@ ${summary}
 ${narrativeEcho}
 
 IMAGE MÉTAPHORIQUE :
-${metaphorLine}
+${metaphorLine} · ${emergentMetaphor}
 
-QUESTION D'OUVERTURE :
+TISSE SENSORIEL :
+${sensoryLine}
+
+MOTS EN VEILLE :
+${emergentLine}
+
+RELANCE OUVERTE :
+${therapeutic}
 ${openQuestion}
 
 PAROLE DÉPOSÉE :
@@ -200,6 +285,7 @@ RÉPONDS :
 - sans méta-commentaire
 - sans te référer à toi-même
 - sans donner de conseils ni solutions
+- fais résonner la réponse précédente si pertinente
 ------------------------------------------------------`;
 }
 
@@ -388,6 +474,21 @@ function filterWordList(list) {
     .filter((w) => !isStopword(w));
 }
 
+function recordLink(pairA, pairB, weight = 1) {
+  if (!pairA || !pairB || pairA === pairB) return;
+  const [a, b] = [pairA, pairB].sort();
+  const key = `${a}-${b}`;
+  const current = linkMemory[key] || 0;
+  linkMemory[key] = current + weight;
+}
+
+function injectResonancePrompt(word) {
+  if (!messageInput || !word) return;
+  const prompt = pickFromArray(THERAPEUTIC_PROMPTS) || "Que veut dire ce mot pour toi ?";
+  messageInput.value = `Quand tu dis «${word}», ${prompt}`;
+  messageInput.focus();
+}
+
 function renderWordcloud() {
   if (!wordCloudEl) return;
   wordCloudEl.innerHTML = '';
@@ -415,9 +516,11 @@ function renderWordcloud() {
       const token = document.createElement('span');
       token.className = 'word-token';
       token.textContent = word;
+      token.title = `Apparitions: ${info.count}`;
       token.style.fontSize = `${size.toFixed(2)}rem`;
       if (word === lastPivot) token.classList.add('pivot');
       if (now - info.lastSeen > WORD_FADE_THRESHOLD) token.classList.add('faded');
+      token.addEventListener('click', () => injectResonancePrompt(word));
       wordCloudEl.appendChild(token);
     });
 }
@@ -425,6 +528,7 @@ function renderWordcloud() {
 function updateMemoryWithEcho(data = {}) {
   const now = Date.now();
   const incoming = [];
+  const normalizedWords = [];
 
   if (data?.pivot) incoming.push({ word: data.pivot, category: 'pivot' });
   (Array.isArray(data?.noyau) ? data.noyau : []).forEach((word) => incoming.push({ word, category: 'noyau' }));
@@ -435,10 +539,18 @@ function updateMemoryWithEcho(data = {}) {
     if (!normalized || isStopword(normalized)) return;
     const current = wordMemory[normalized] || { count: 0, lastSeen: now };
     wordMemory[normalized] = { count: current.count + 1, lastSeen: now };
+    normalizedWords.push(normalized);
     if (category === 'pivot') {
       lastPivot = normalized;
     }
   });
+
+  // enregistre les cooccurrences pour alimenter le graph
+  for (let i = 0; i < normalizedWords.length; i += 1) {
+    for (let j = i + 1; j < normalizedWords.length; j += 1) {
+      recordLink(normalizedWords[i], normalizedWords[j]);
+    }
+  }
 
   saveMemory();
   renderWordcloud();
@@ -446,9 +558,26 @@ function updateMemoryWithEcho(data = {}) {
 
 function clearMemory() {
   wordMemory = {};
+  linkMemory = {};
   lastPivot = '';
   saveMemory();
   applyMetaphorStyle(null);
+  renderWordcloud();
+}
+
+function releasePivot() {
+  if (lastPivot) {
+    if (wordMemory[lastPivot]) {
+      delete wordMemory[lastPivot];
+    }
+    Object.keys(linkMemory).forEach((pairKey) => {
+      if (pairKey.includes(`${lastPivot}-`) || pairKey.endsWith(`-${lastPivot}`)) {
+        delete linkMemory[pairKey];
+      }
+    });
+  }
+  lastPivot = '';
+  saveMemory();
   renderWordcloud();
 }
 
@@ -614,7 +743,7 @@ function updateGraphFromEcho(data) {
   };
 
   const activeWords = new Set();
-  const forceMap = metrics.forceLiens;
+  const forceMap = Object.keys(metrics.forceLiens || {}).length ? metrics.forceLiens : linkMemory;
 
   pivotWords.forEach((w) => { upsertGraphNode(w, 'pivot', metrics, forceMap); activeWords.add(w); });
   noyauWords.forEach((w) => { upsertGraphNode(w, 'noyau', metrics, forceMap); activeWords.add(w); });
@@ -820,7 +949,7 @@ async function sendMessage() {
 
   const useResonantPrompt = RESONANCE_MODE === 'enriched' && echoData;
   const enrichedMessage = useResonantPrompt
-    ? buildPrompt(echoData, content, { history: resonanceHistory, poetryLevel })
+    ? buildResonantPrompt(echoData, content, { history: resonanceHistory, poetryLevel })
     : content;
 
   const messagesForModel = conversation.map((entry, idx) => {
@@ -853,6 +982,7 @@ async function sendMessage() {
     if (!echoData) {
       updateEcho(content);
     }
+    updateEcho(reply);
   } catch (error) {
     const friendly = friendlyNebiusError(error);
     setStatus('❌ ' + friendly);
@@ -867,6 +997,18 @@ sendBtn.addEventListener('click', sendMessage);
 resetBtn.addEventListener('click', resetConversation);
 if (wordMemoryResetBtn) {
   wordMemoryResetBtn.addEventListener('click', () => clearMemory());
+}
+if (releasePivotBtn) {
+  releasePivotBtn.addEventListener('click', () => releasePivot());
+}
+if (integrateBtn) {
+  integrateBtn.addEventListener('click', () => {
+    const lastAssistant = [...conversation].reverse().find((item) => item.role === 'assistant');
+    if (lastAssistant?.content) {
+      updateEcho(lastAssistant.content);
+      setStatus('Réintégration de la dernière résonance...');
+    }
+  });
 }
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -903,7 +1045,10 @@ if (poetryLevelInput) {
   });
 }
 
-wordMemory = loadMemory();
+const loadedMemory = loadMemory();
+wordMemory = loadedMemory.words || {};
+linkMemory = loadedMemory.links || {};
+lastPivot = loadedMemory.lastPivot || '';
 renderWordcloud();
 renderHistory();
 setResonanceMode(RESONANCE_MODE);

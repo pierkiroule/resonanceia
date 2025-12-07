@@ -54,7 +54,10 @@
         <input type="number" id="max_tokens" min="32" max="2000" value="256" />
       </div>
     </div>
-    <button id="sendBtn">Envoyer</button>
+    <div class="row actions-row">
+      <button id="sendBtn">Déposer</button>
+      <button id="integrateBtn" class="ghost-btn" type="button">Intégrer la résonance</button>
+    </div>
     <button id="resetBtn" style="margin-top:8px; background:#272734;">Réinitialiser</button>
   </section>
 
@@ -68,6 +71,7 @@
       <span class="badge" id="metaphorBadge">—</span>
     </div>
     <div class="wordcloud-actions">
+      <button id="releasePivot" class="ghost-btn" type="button">Laisser partir le pivot</button>
       <button id="wordMemoryReset" class="ghost-btn" type="button">Réinitialiser la mémoire</button>
     </div>
     <div id="wordcloud-container" class="wordcloud">
