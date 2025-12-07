@@ -71,6 +71,71 @@
     </section>
 
     <section class="card">
+      <div class="card-header">
+        <h2>Formulaire QCM – Trame GPT Builder</h2>
+        <p class="lede">Générez une trame prête à coller dans GPT Builder à partir de quelques choix rapides.</p>
+      </div>
+      <form id="trame-form" class="form-grid">
+        <div>
+          <label for="gpt-name" class="input-label">Nom du GPT</label>
+          <input id="gpt-name" type="text" placeholder="Ex : Médiateur ÉCHO" value="Préms Écho intérieur" />
+        </div>
+        <div>
+          <label for="gpt-description" class="input-label">Description brève</label>
+          <input id="gpt-description" type="text" placeholder="Rôle et public en 1 phrase" value="Médiation poétique reliant sensations intérieures et mythes." />
+        </div>
+        <div>
+          <h3>Voix / registre</h3>
+          <div class="radio-group" data-name="registre">
+            <label><input type="radio" name="registre" value="poetique" checked /> Poétique & suggestive</label>
+            <label><input type="radio" name="registre" value="didactique" /> Didactique & clair</label>
+            <label><input type="radio" name="registre" value="pragmatique" /> Pragmatique & concis</label>
+          </div>
+        </div>
+        <div>
+          <h3>Structure de sortie</h3>
+          <div class="radio-group" data-name="structure">
+            <label><input type="radio" name="structure" value="texte" checked /> Texte libre</label>
+            <label><input type="radio" name="structure" value="puces" /> Puces courtes</label>
+            <label><input type="radio" name="structure" value="json" /> Petit JSON</label>
+          </div>
+        </div>
+        <div>
+          <h3>Éléments à inclure</h3>
+          <div class="checkbox-group" data-name="elements">
+            <label><input type="checkbox" value="silences" checked /> Silences textuels autorisés</label>
+            <label><input type="checkbox" value="mythes" checked /> Allusions mythologiques limitées</label>
+            <label><input type="checkbox" value="corps" /> Retour aux sensations corporelles</label>
+            <label><input type="checkbox" value="tags" /> Mentionner tags ou mots-clés</label>
+          </div>
+        </div>
+        <div>
+          <h3>Fonctionnalités</h3>
+          <div class="checkbox-group" data-name="features">
+            <label><input type="checkbox" value="web" /> Recherche web</label>
+            <label><input type="checkbox" value="images" /> Génération d’images</label>
+            <label><input type="checkbox" value="code" /> Code interpreter</label>
+          </div>
+        </div>
+        <div class="full-row">
+          <label for="api-url" class="input-label">URL d’action API</label>
+          <input id="api-url" type="text" placeholder="https://.../api/echo" />
+        </div>
+        <div class="full-row">
+          <button type="button" id="generate-trame" class="primary">Générer la trame GPT</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Trame GPT prête à coller</h2>
+        <button class="ghost" data-copy="gpt-trame">Copier</button>
+      </div>
+      <textarea id="gpt-trame" readonly></textarea>
+    </section>
+
+    <section class="card">
       <h2>Résumé</h2>
       <p id="resume" class="resume"></p>
     </section>
@@ -128,6 +193,8 @@
     const openapiEl = document.getElementById('openapi-json');
     const testInput = document.getElementById('test-message');
     const apiResponse = document.getElementById('api-response');
+    const trameForm = document.getElementById('trame-form');
+    const gptTrameEl = document.getElementById('gpt-trame');
 
     function getSelectedValues(groupName) {
       const group = form.querySelector(`[data-name="${groupName}"]`);
@@ -145,6 +212,17 @@
       if (values.length === 1) return values[0];
       const last = values[values.length - 1];
       return `${values.slice(0, -1).join(', ')} et ${last}`;
+    }
+
+    function getRadioValue(formEl, name, fallback = '') {
+      const radio = formEl.querySelector(`input[name="${name}"]:checked`);
+      return radio ? radio.value : fallback;
+    }
+
+    function getCheckedValues(formEl, groupName) {
+      const group = formEl.querySelector(`[data-name="${groupName}"]`);
+      const inputs = group ? group.querySelectorAll('input:checked') : [];
+      return Array.from(inputs).map((input) => input.value);
     }
 
     function buildSystemPrompt({ intentions, publics, styles, intensite }) {
@@ -276,6 +354,63 @@
       return JSON.stringify(schema, null, 2);
     }
 
+    function buildTrameGpt({ name, description, registre, structure, elements, features, apiUrl }) {
+      const outputFormat = {
+        texte: 'Sortie en texte libre, phrases courtes.',
+        puces: 'Sortie sous forme de puces concises.',
+        json: 'Sortie JSON minimal : { "echo": "...", "tags": [ ... ] }'
+      }[structure] || 'Sortie en texte libre.';
+
+      const styleLines = [];
+      if (registre === 'poetique') styleLines.push('Voix poétique, sensorielle, suggestive.');
+      if (registre === 'didactique') styleLines.push('Voix claire, structurée, pédagogique.');
+      if (registre === 'pragmatique') styleLines.push('Voix pragmatique, directe, orientée action.');
+
+      if (elements.includes('silences')) styleLines.push('Peut insérer des silences textuels (ligne vide ou …) pour laisser respirer.');
+      if (elements.includes('mythes')) styleLines.push('Allusions mythologiques discrètes (1–2 maximum) en métaphore, sans interprétation.');
+      if (elements.includes('corps')) styleLines.push('Invite à revenir aux sensations corporelles sans analyse clinique.');
+      if (elements.includes('tags')) styleLines.push('Peut proposer quelques tags/mots-clés en fin de réponse.');
+
+      const featureLines = ['Activer uniquement les fonctionnalités nécessaires :'];
+      ['web', 'images', 'code'].forEach((feature) => {
+        const labelMap = { web: 'Recherche web', images: 'Génération d’images', code: 'Code interpreter' };
+        const label = labelMap[feature];
+        featureLines.push(`${features.includes(feature) ? '✔︎' : '✘'} ${label}`);
+      });
+
+      return [
+        `Nom : ${name || 'GPT personnalisé'}`,
+        `Description : ${description || 'Décris en 1 phrase le rôle et le public visé.'}`,
+        '',
+        'Instructions :',
+        '- Rôle : médiation / accompagnement en résonance.',
+        `- Style : ${styleLines.join(' ') || 'choisir un registre.'}`,
+        `- Format de sortie : ${outputFormat}`,
+        '- À éviter : interprétations médicales/juridiques, diagnostics, divinations.',
+        '- Quand se taire : accepter les silences, ne pas forcer la réponse.',
+        '',
+        'Bloc Appel API (Action) :',
+        `- Méthode POST ${apiUrl || window.location.origin + '/api/echo'}`,
+        '- Headers : Content-Type: application/json',
+        '- Payload : { "message": "texte utilisateur" }',
+        '- Afficher uniquement le champ poétique/echo + mention de source.',
+        '- OpenAPI : /openapi.json',
+        '',
+        'Actions :',
+        '- Action unique « echo_exterieur » : appeler si l’utilisateur demande un écho extérieur ou une vérification.',
+        '- Ne pas inventer de réponse JSON si l’API échoue ; signaler simplement l’impossibilité provisoire.',
+        '',
+        'Amorces possibles :',
+        '- « Je me sens perdu entre deux mondes. »',
+        '- « Fais résonner mon silence avec les mythes anciens. »',
+        '- « Parle-moi d’une métamorphose intérieure. »',
+        '',
+        featureLines.join('\n'),
+        '',
+        'Style de sortie : paragraphes courts, 1–2 références symboliques maximum, conclure par la mention « résonance issue de l’API ÉCHO ». '
+      ].join('\n');
+    }
+
     function updateOutputs() {
       const intentions = getSelectedValues('intentions');
       const publics = getSelectedValues('publics');
@@ -300,6 +435,22 @@
       ];
       const namePart = filtreNom ? `Filtre nommé : ${filtreNom}.` : 'Filtre sans nom explicite.';
       resumeEl.textContent = `${resumeParts.join(' | ')}. ${namePart}`;
+    }
+
+    function updateTrame() {
+      const name = document.getElementById('gpt-name').value.trim();
+      const description = document.getElementById('gpt-description').value.trim();
+      const apiUrlInput = document.getElementById('api-url');
+      const registre = getRadioValue(trameForm, 'registre', 'poetique');
+      const structure = getRadioValue(trameForm, 'structure', 'texte');
+      const elements = getCheckedValues(trameForm, 'elements');
+      const features = getCheckedValues(trameForm, 'features');
+      if (!apiUrlInput.value) {
+        apiUrlInput.value = `${window.location.origin}/api/echo`;
+      }
+      const apiUrl = apiUrlInput.value.trim();
+
+      gptTrameEl.value = buildTrameGpt({ name, description, registre, structure, elements, features, apiUrl });
     }
 
     function attachCopyButtons() {
@@ -338,10 +489,13 @@
 
     document.getElementById('generate').addEventListener('click', updateOutputs);
     form.addEventListener('change', updateOutputs);
+    document.getElementById('generate-trame').addEventListener('click', updateTrame);
+    trameForm.addEventListener('change', updateTrame);
 
     attachCopyButtons();
     attachApiTester();
     updateOutputs();
+    updateTrame();
   </script>
 </body>
 </html>
