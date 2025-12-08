@@ -4,3 +4,5 @@ resonance-api/node_modules
 npm-debug.log*
 .DS_Store
 coverage
+data/*.db
+data/resonance.db

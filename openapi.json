@@ -1,15 +1,14 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "API Echo Resonante",
+    "title": "API Écho Résonante",
     "version": "1.0.0",
-    "description": "Analyse lexicale deterministe et generation d'echo poetic-compatible GPT actions"
+    "description": "API minimale pour pousser un texte, stocker des occurrences SQLite et récupérer le graph Courtial/Callon"
   },
   "paths": {
-    "/api/echo": {
+    "/api/push": {
       "post": {
-        "operationId": "postEcho",
-        "summary": "Analyse un message et renvoie un echo resonance",
+        "summary": "Analyse et stockage d'un texte",
         "requestBody": {
           "required": true,
           "content": {
@@ -17,8 +16,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "message": { "type": "string" },
-                  "debug": { "type": "boolean" }
+                  "message": {
+                    "type": "string",
+                    "example": "angoisse controle respiration"
+                  }
                 },
                 "required": ["message"]
               }
@@ -27,39 +28,82 @@
         },
         "responses": {
           "200": {
-            "description": "Echo resonance",
+            "description": "Analyse Courtial/Callon",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "pivot": { "type": "string", "nullable": true },
+                    "pivot": { "type": "string" },
                     "noyau": { "type": "array", "items": { "type": "string" } },
                     "peripherie": { "type": "array", "items": { "type": "string" } },
-                    "cooccurrences": { "type": "object", "additionalProperties": { "type": "integer" } },
-                    "tags": { "type": "array", "items": { "type": "string" } },
-                    "metaphore": { "type": "string" },
-                    "question_rebond": { "type": "string" },
-                    "suggestions_poetiques": { "type": "array", "items": { "type": "string" } },
-                    "ciel_etoile": { "type": "array", "items": { "type": "object", "properties": { "emoji": { "type": "string" }, "label": { "type": "string" } } } },
-                    "comptage": {
-                      "type": "object",
-                      "properties": {
-                        "total": { "type": "integer" },
-                        "pivot": { "type": "integer" },
-                        "repartition": { "type": "object", "additionalProperties": { "type": "integer" } }
+                    "satellites": { "type": "array", "items": { "type": "string" } },
+                    "clusters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tag": { "type": "string" },
+                          "emoji": { "type": "string" },
+                          "intensite": { "type": "number" }
+                        }
                       }
                     },
-                    "cache_hit": { "type": "boolean" },
-                    "usage_stats": { "type": "object", "properties": { "total_calls": { "type": "integer" } } },
-                    "temps_execution_ms": { "type": "number" },
-                    "debug": { "type": "object" }
+                    "coeffs": {
+                      "type": "object",
+                      "properties": {
+                        "densite": { "type": "number" },
+                        "emergence": { "type": "number" },
+                        "centralite": { "type": "number" }
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "400": { "description": "Message manquant" }
+          "400": { "description": "Requête invalide" }
+        }
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "summary": "Graph Courtial/Callon",
+        "responses": {
+          "200": {
+            "description": "Nodes et liens courants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "count": { "type": "integer" },
+                          "centrality": { "type": "integer" }
+                        }
+                      }
+                    },
+                    "links": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": { "type": "string" },
+                          "target": { "type": "string" },
+                          "weight": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
