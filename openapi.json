@@ -1,14 +1,24 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.1.0",
   "info": {
-    "title": "API Écho Résonante",
+    "title": "EmojiRéso",
     "version": "1.0.0",
-    "description": "API minimale pour pousser un texte, stocker des occurrences SQLite et récupérer le graph Courtial/Callon"
+    "description": "API d'écho sémiotique basée uniquement sur des emojis"
   },
   "paths": {
-    "/api/push": {
+    "/api/emojireso": {
+      "get": {
+        "summary": "Récupérer l'état courant du réseau emoji",
+        "responses": {
+          "200": {
+            "description": "État du réseau",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EmojiReseau"}}}
+          }
+        }
+      },
       "post": {
-        "summary": "Analyse et stockage d'un texte",
+        "summary": "Ajouter des emojis et renvoyer l'écho sémiotique",
+        "operationId": "emojiso",
         "requestBody": {
           "required": true,
           "content": {
@@ -16,89 +26,65 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "message": {
-                    "type": "string",
-                    "example": "angoisse controle respiration"
+                  "session": {"type": "string"},
+                  "emojis": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1
                   }
                 },
-                "required": ["message"]
+                "required": ["emojis"]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Analyse Courtial/Callon",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "pivot": { "type": "string" },
-                    "noyau": { "type": "array", "items": { "type": "string" } },
-                    "peripherie": { "type": "array", "items": { "type": "string" } },
-                    "satellites": { "type": "array", "items": { "type": "string" } },
-                    "clusters": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "tag": { "type": "string" },
-                          "emoji": { "type": "string" },
-                          "intensite": { "type": "number" }
-                        }
-                      }
-                    },
-                    "coeffs": {
-                      "type": "object",
-                      "properties": {
-                        "densite": { "type": "number" },
-                        "emergence": { "type": "number" },
-                        "centralite": { "type": "number" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "description": "Requête invalide" }
+            "description": "Réseau mis à jour",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EmojiReseau"}}}
+          }
         }
       }
     },
-    "/api/graph": {
-      "get": {
-        "summary": "Graph Courtial/Callon",
-        "responses": {
-          "200": {
-            "description": "Nodes et liens courants",
-            "content": {
-              "application/json": {
-                "schema": {
+    "/api/emojireso/reset": {
+      "post": {
+        "summary": "Réinitialiser la base SQLite",
+        "responses": {"200": {"description": "Base vidée"}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EmojiReseau": {
+        "type": "object",
+        "properties": {
+          "central": {"type": "array", "items": {"type": "string"}},
+          "orbit": {"type": "array", "items": {"type": "string"}},
+          "isolated": {"type": "array", "items": {"type": "string"}},
+          "emerging": {"type": "array", "items": {"type": "string"}},
+          "graph": {
+            "type": "object",
+            "properties": {
+              "nodes": {
+                "type": "array",
+                "items": {
                   "type": "object",
                   "properties": {
-                    "nodes": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": { "type": "string" },
-                          "count": { "type": "integer" },
-                          "centrality": { "type": "integer" }
-                        }
-                      }
-                    },
-                    "links": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "source": { "type": "string" },
-                          "target": { "type": "string" },
-                          "weight": { "type": "integer" }
-                        }
-                      }
-                    }
+                    "id": {"type": "string"},
+                    "count": {"type": "integer"},
+                    "centrality": {"type": "number"},
+                    "density": {"type": "number"}
+                  }
+                }
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "weight": {"type": "integer"}
                   }
                 }
               }

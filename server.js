@@ -1,9 +1,7 @@
 import express from 'express';
 import path from 'path';
-import cors from 'cors';
 import { fileURLToPath } from 'url';
-import pushRouter from './routes/push.js';
-import graphRouter from './routes/graph.js';
+import emojiRouter from './routes/emojireso.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,21 +9,25 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  return next();
+});
 app.use(express.json());
 
-app.use('/api', pushRouter);
-app.use('/api', graphRouter);
+app.use('/api', emojiRouter);
 
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
-app.get('/', (_req, res) => {
+app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(publicPath, 'dashboard.html'));
 });
 
-app.get('/openapi.json', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'openapi.json'));
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.get('*', (_req, res) => {
@@ -33,5 +35,5 @@ app.get('*', (_req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`API ÉCHO résonante sur le port ${PORT}`);
+  console.log(`EmojiRéso•° sur le port ${PORT}`);
 });
