@@ -1,7 +1,7 @@
 {
   "name": "resonanceia",
-  "version": "3.0.0",
-  "description": "Webapp Express pour API ÉCHO et générateur de prompts",
+  "version": "4.0.0",
+  "description": "API ÉCHO résonante avec SQLite et tableau de bord Courtial",
   "type": "module",
   "engines": {
     "node": "^18 || ^20"
@@ -10,6 +10,8 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "better-sqlite3": "^9.6.0",
+    "cors": "^2.8.5",
     "express": "^4.19.2"
   }
 }

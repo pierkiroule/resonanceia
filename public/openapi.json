@@ -1,19 +1,14 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.1",
   "info": {
-    "title": "API ÉCHO – Résonance locale",
+    "title": "API Écho Résonante",
     "version": "1.0.0",
-    "description": "Analyse statistique locale sans IA générative. Retourne pivot, noyau, périphérie, cooccurrences, centralité et métaphore."
+    "description": "API minimale pour pousser un texte, stocker des occurrences SQLite et récupérer le graph Courtial/Callon"
   },
-  "servers": [
-    { "url": "https://<votre-service>.onrender.com", "description": "Déploiement Render" },
-    { "url": "http://localhost:3000", "description": "Développement local" }
-  ],
   "paths": {
-    "/api/echo": {
+    "/api/push": {
       "post": {
-        "summary": "Analyse un message et renvoie l'écho structuré.",
-        "operationId": "echo_exterieur",
+        "summary": "Analyse et stockage d'un texte",
         "requestBody": {
           "required": true,
           "content": {
@@ -23,7 +18,7 @@
                 "properties": {
                   "message": {
                     "type": "string",
-                    "description": "Texte utilisateur à analyser"
+                    "example": "angoisse controle respiration"
                   }
                 },
                 "required": ["message"]
@@ -33,47 +28,83 @@
         },
         "responses": {
           "200": {
-            "description": "Écho calculé",
+            "description": "Analyse Courtial/Callon",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EchoResponse" }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pivot": { "type": "string" },
+                    "noyau": { "type": "array", "items": { "type": "string" } },
+                    "peripherie": { "type": "array", "items": { "type": "string" } },
+                    "satellites": { "type": "array", "items": { "type": "string" } },
+                    "clusters": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tag": { "type": "string" },
+                          "emoji": { "type": "string" },
+                          "intensite": { "type": "number" }
+                        }
+                      }
+                    },
+                    "coeffs": {
+                      "type": "object",
+                      "properties": {
+                        "densite": { "type": "number" },
+                        "emergence": { "type": "number" },
+                        "centralite": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Requête invalide" }
+        }
+      }
+    },
+    "/api/graph": {
+      "get": {
+        "summary": "Graph Courtial/Callon",
+        "responses": {
+          "200": {
+            "description": "Nodes et liens courants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "count": { "type": "integer" },
+                          "centrality": { "type": "integer" }
+                        }
+                      }
+                    },
+                    "links": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": { "type": "string" },
+                          "target": { "type": "string" },
+                          "weight": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
         }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "EchoResponse": {
-        "type": "object",
-        "properties": {
-          "pivot": { "type": "string", "nullable": true },
-          "noyau": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Top 3 des cooccurrences du pivot"
-          },
-          "peripherie": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Autres mots uniques"
-          },
-          "cooccurrences": {
-            "type": "object",
-            "additionalProperties": { "type": "integer" },
-            "description": "Fréquence des cooccurrences autour du pivot"
-          },
-          "centralite": { "type": "number", "description": "Score pivot + cooccurrences / total mots" },
-          "metaphore": { "type": "string" },
-          "echo": { "type": "string" },
-          "tags": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        },
-        "required": ["noyau", "peripherie", "cooccurrences", "centralite", "metaphore", "echo", "tags"]
       }
     }
   }

@@ -1,52 +1,41 @@
-# Webapp ÉCHO (Render-ready)
+# API Écho Résonante (Courtial/Callon)
 
-Application Express minimaliste avec une seule API `/api/echo` et une page unique pour générer les prompts et le bloc OpenAPI destinés à GPT Builder. Aucune dépendance vers des IA externes.
+Application Express minimaliste :
+- `POST /api/push` : reçoit un texte, extrait les termes, stocke en SQLite et renvoie pivot/noyau/périphérie + clusters emoji.
+- `GET /api/graph` : retourne les nodes/links du graph Courtial (occurrences + cooccurrences).
+- `public/dashboard.html` : visualisation temps réel (liste top 10 + SVG simple), rafraîchie toutes les 4s.
 
 ## Démarrage local
 ```bash
 npm install
-npm run start
-# puis ouvrir http://localhost:3000
+npm start
+# http://localhost:3000
 ```
 
-## Endpoint unique
-`POST /api/echo`
+Tester rapidement :
+```bash
+curl -X POST http://localhost:3000/api/push \
+  -H "Content-Type: application/json" \
+  -d '{"message":"angoisse controle respiration"}'
 
-Corps JSON minimal :
-```json
-{ "message": "je me sens pris entre deux choix" }
+curl http://localhost:3000/api/graph
 ```
 
-Réponse type :
-```json
-{
-  "pivot": "choix",
-  "noyau": ["deux", "pris"],
-  "peripherie": ["sens", "entre"],
-  "centralite": 2.5,
-  "cooccurrences": { "deux": 2, "pris": 1 },
-  "tags": ["choix", "deux", "pris"],
-  "metaphore": "comme une vibration sur un fil tendu",
-  "echo": "Tes mots gravitent autour de « choix », en lien avec deux, pris."
-}
-```
+## Modèle de données
+Base SQLite `data/resonance.db`, table unique `terms` :
+| champ | type | usage |
+| --- | --- | --- |
+| id | integer | PK |
+| word | text | terme ou 1er élément d'un bigramme |
+| pair | text/null | 2e élément du bigramme (NULL si unigramme) |
+| count | integer | occurrences cumulées |
+| last_seen | integer | timestamp ms |
+| weight | real | pondération cumulée |
 
-- Toujours du JSON (pas de HTML).
-- Aucun appel externe ou fallback IA.
-- CORS ouvert pour simplifier l’usage depuis GPT.
-
-## Connecter à GPT Builder
-1. Déployez sur Render (commande de démarrage : `node server.js`).
-2. Copiez les blocs générés par la page `http(s)://<votre-host>/` :
-   - Prompt Système pour le champ "Instructions".
-   - Prompt GPT Action décrivant la configuration.
-   - Bloc OpenAPI JSON à importer dans l’onglet Actions (ou coller l’URL `http(s)://<votre-host>/openapi.json`).
-3. L’Action unique autorisée est `POST /api/echo`.
-
-## Fichier OpenAPI statique
-Le fichier `public/openapi.json` décrit l’API et est servi à la racine du site. Il reflète exactement le comportement de l’endpoint Express.
+## OpenAPI
+Schéma statique disponible via `GET /openapi.json` et dans `public/openapi.json`.
 
 ## Déploiement Render
-- Build command : `npm install`
-- Start command : `npm run start`
-- Node 18+.
+- Build : `npm install`
+- Start : `npm start`
+- Node 18+

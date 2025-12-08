@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Écho Résonant — Courtial</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">API Écho Résônante</p>
+          <h1>Diagramme stratégique (Courtial/Callon)</h1>
+          <p class="muted">Poussez un texte sur /api/push, observez le graph mis à jour en temps réel.</p>
+          <div class="cta-row">
+            <code class="pill">POST /api/push</code>
+            <code class="pill ghost">GET /api/graph</code>
+          </div>
+        </div>
+        <div class="panel">
+          <p class="panel-title">CURL rapide</p>
+          <pre><code>curl -X POST http://localhost:3000/api/push \ 
+  -H "Content-Type: application/json" \ 
+  -d '{"message":"angoisse controle respiration"}'</code></pre>
+        </div>
+      </header>
+
+      <section class="split">
+        <div class="card">
+          <div class="card-head">
+            <h2>Top 10 termes</h2>
+            <span id="updatedAt" class="muted">—</span>
+          </div>
+          <ol id="topList" class="top-list"></ol>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>Graph Courtial</h2>
+            <span class="muted">auto-refresh 4s</span>
+          </div>
+          <div class="svg-shell">
+            <svg id="graph" viewBox="0 0 700 500" role="img" aria-label="Graph Courtial"></svg>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./dashboard.js" type="module"></script>
+  </body>
+</html>
