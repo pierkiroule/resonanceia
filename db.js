@@ -11,102 +11,170 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const dbPath = path.join(dataDir, 'resonance.db');
+const dbPath = path.join(dataDir, 'reseau.db');
 export const db = new Database(dbPath);
 
-const initSql = `
-CREATE TABLE IF NOT EXISTS terms (
+db.exec(`
+CREATE TABLE IF NOT EXISTS interactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  word TEXT NOT NULL,
-  pair TEXT DEFAULT NULL,
-  count INTEGER NOT NULL DEFAULT 0,
-  last_seen INTEGER NOT NULL,
-  weight REAL NOT NULL DEFAULT 0,
-  UNIQUE(word, pair)
-);
-`;
-db.exec(initSql);
-
-const upsertStmt = db.prepare(
-  `INSERT INTO terms (word, pair, count, last_seen, weight)
-   VALUES (@word, @pair, @count, @last_seen, @weight)
-   ON CONFLICT(word, pair) DO UPDATE SET
-     count = count + excluded.count,
-     last_seen = excluded.last_seen,
-     weight = weight + excluded.weight`
+  session TEXT,
+  timestamp INTEGER NOT NULL
 );
 
-export function persistCounts(counts) {
-  const now = Date.now();
-  const tx = db.transaction((entries) => {
-    entries.forEach(([word, count]) => {
-      upsertStmt.run({
-        word,
-        pair: null,
-        count,
-        last_seen: now,
-        weight: count,
-      });
-    });
-  });
-  tx([...counts.entries()]);
+CREATE TABLE IF NOT EXISTS emoji_count (
+  emoji TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS emoji_links (
+  emoji1 TEXT NOT NULL,
+  emoji2 TEXT NOT NULL,
+  cooccurrence_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (emoji1, emoji2)
+);
+`);
+
+const insertInteractionStmt = db.prepare(
+  'INSERT INTO interactions (session, timestamp) VALUES (?, ?)',
+);
+
+const upsertCountStmt = db.prepare(
+  `INSERT INTO emoji_count (emoji, count)
+   VALUES (:emoji, :count)
+   ON CONFLICT(emoji) DO UPDATE SET count = emoji_count.count + excluded.count`,
+);
+
+const upsertLinkStmt = db.prepare(
+  `INSERT INTO emoji_links (emoji1, emoji2, cooccurrence_count)
+   VALUES (:emoji1, :emoji2, :cooccurrence_count)
+   ON CONFLICT(emoji1, emoji2) DO UPDATE SET cooccurrence_count = emoji_links.cooccurrence_count + excluded.cooccurrence_count`,
+);
+
+function normalizeEmojis(emojis = []) {
+  return emojis
+    .filter((e) => typeof e === 'string' && e.trim().length > 0)
+    .map((e) => e.trim());
 }
 
-export function persistPairs(pairWeights) {
-  const now = Date.now();
-  const tx = db.transaction((entries) => {
-    entries.forEach(([key, weight]) => {
-      const [a, b] = key.split('|');
-      upsertStmt.run({
-        word: a,
-        pair: b,
-        count: weight,
-        last_seen: now,
-        weight,
-      });
-    });
-  });
-  tx([...pairWeights.entries()]);
+function combinations(emojis) {
+  const counts = new Map();
+  for (let i = 0; i < emojis.length; i += 1) {
+    for (let j = i + 1; j < emojis.length; j += 1) {
+      const [a, b] = [emojis[i], emojis[j]].sort();
+      const key = `${a}|${b}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return counts;
 }
 
-export function getGraphData() {
-  const words = db.prepare('SELECT word, count, weight FROM terms WHERE pair IS NULL').all();
-  const pairs = db.prepare('SELECT word, pair, count FROM terms WHERE pair IS NOT NULL').all();
-
-  const centrality = new Map();
-  const neighborSets = new Map();
-
-  pairs.forEach(({ word, pair }) => {
-    if (!neighborSets.has(word)) neighborSets.set(word, new Set());
-    if (!neighborSets.has(pair)) neighborSets.set(pair, new Set());
-    neighborSets.get(word).add(pair);
-    neighborSets.get(pair).add(word);
+export function resetDatabase() {
+  const tx = db.transaction(() => {
+    db.exec('DELETE FROM emoji_links; DELETE FROM emoji_count; DELETE FROM interactions;');
   });
+  tx();
+}
 
-  neighborSets.forEach((set, term) => {
-    centrality.set(term, set.size);
-  });
+export function recordInteraction(emojis, session = null) {
+  const cleaned = normalizeEmojis(emojis);
+  if (!cleaned.length) return { central: [], orbit: [], isolated: [], emerging: [], graph: { nodes: [], links: [] } };
 
-  const nodeMap = new Map();
-  words.forEach(({ word, count }) => {
-    nodeMap.set(word, {
-      id: word,
-      count,
-      centrality: centrality.get(word) || 0,
+  const now = Date.now();
+  const freq = cleaned.reduce((acc, emoji) => {
+    acc.set(emoji, (acc.get(emoji) || 0) + 1);
+    return acc;
+  }, new Map());
+
+  const existing = new Map();
+  const placeholders = cleaned.map(() => '?').join(',');
+  if (placeholders.length) {
+    const rows = db
+      .prepare(`SELECT emoji, count FROM emoji_count WHERE emoji IN (${placeholders})`)
+      .all(...cleaned);
+    rows.forEach((row) => existing.set(row.emoji, row.count));
+  }
+
+  const pairCounts = combinations(cleaned);
+
+  const tx = db.transaction(() => {
+    insertInteractionStmt.run(session, now);
+    freq.forEach((count, emoji) => {
+      upsertCountStmt.run({ emoji, count });
+    });
+    pairCounts.forEach((count, key) => {
+      const [emoji1, emoji2] = key.split('|');
+      upsertLinkStmt.run({ emoji1, emoji2, cooccurrence_count: count });
     });
   });
+  tx();
 
-  pairs.forEach(({ word, pair, count }) => {
-    if (!nodeMap.has(word)) {
-      nodeMap.set(word, { id: word, count: 0, centrality: centrality.get(word) || 0 });
-    }
-    if (!nodeMap.has(pair)) {
-      nodeMap.set(pair, { id: pair, count: 0, centrality: centrality.get(pair) || 0 });
-    }
+  const graph = getGraph();
+  const emerging = cleaned.filter((emoji) => !existing.has(emoji));
+  const classified = classifyGraph(graph, emerging);
+
+  return { ...classified, graph };
+}
+
+export function getGraph() {
+  const counts = db.prepare('SELECT emoji, count FROM emoji_count').all();
+  const links = db.prepare('SELECT emoji1, emoji2, cooccurrence_count FROM emoji_links').all();
+
+  const maxCount = Math.max(...counts.map((c) => c.count), 1);
+  const densityMap = new Map();
+  const nodesMap = new Map();
+
+  counts.forEach(({ emoji, count }) => {
+    nodesMap.set(emoji, { id: emoji, count, centrality: 0, density: 0 });
   });
 
-  const nodes = [...nodeMap.values()].sort((a, b) => b.count - a.count || b.centrality - a.centrality);
-  const links = pairs.map(({ word, pair, count }) => ({ source: word, target: pair, weight: count }));
+  links.forEach(({ emoji1, emoji2, cooccurrence_count }) => {
+    if (!nodesMap.has(emoji1)) nodesMap.set(emoji1, { id: emoji1, count: 0, centrality: 0, density: 0 });
+    if (!nodesMap.has(emoji2)) nodesMap.set(emoji2, { id: emoji2, count: 0, centrality: 0, density: 0 });
 
-  return { nodes, links };
+    densityMap.set(emoji1, (densityMap.get(emoji1) || 0) + cooccurrence_count);
+    densityMap.set(emoji2, (densityMap.get(emoji2) || 0) + cooccurrence_count);
+  });
+
+  nodesMap.forEach((node, emoji) => {
+    const centrality = (node.count || 0) / maxCount;
+    node.centrality = Number(centrality.toFixed(3));
+    node.density = Number((densityMap.get(emoji) || 0).toFixed(3));
+  });
+
+  const nodes = [...nodesMap.values()].sort((a, b) => b.count - a.count || b.density - a.density);
+  const formattedLinks = links.map(({ emoji1, emoji2, cooccurrence_count }) => ({
+    source: emoji1,
+    target: emoji2,
+    weight: cooccurrence_count,
+  }));
+
+  return { nodes, links: formattedLinks };
+}
+
+function classifyGraph(graph, emerging = []) {
+  const nodes = graph.nodes || [];
+  if (!nodes.length) return { central: [], orbit: [], isolated: [], emerging };
+
+  const sorted = [...nodes].sort((a, b) => b.centrality - a.centrality || b.count - a.count);
+  const topCentrality = sorted[0]?.centrality || 0;
+  const central = sorted
+    .filter((node) => node.centrality === topCentrality)
+    .slice(0, 2)
+    .map((n) => n.id);
+
+  const orbit = nodes
+    .filter((node) => !central.includes(node.id) && node.density > 0)
+    .map((n) => n.id);
+
+  const isolated = nodes
+    .filter((node) => !central.includes(node.id) && !orbit.includes(node.id))
+    .map((n) => n.id);
+
+  return { central, orbit, isolated, emerging: [...new Set(emerging)] };
+}
+
+export function getCurrentState() {
+  const graph = getGraph();
+  const classified = classifyGraph(graph, []);
+  return { ...classified, graph };
 }

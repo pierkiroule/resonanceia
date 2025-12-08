@@ -1,41 +1,64 @@
-# API Écho Résonante (Courtial/Callon)
+# EmojiRéso•° — API d'écho sémiotique 100% emojis
 
-Application Express minimaliste :
-- `POST /api/push` : reçoit un texte, extrait les termes, stocke en SQLite et renvoie pivot/noyau/périphérie + clusters emoji.
-- `GET /api/graph` : retourne les nodes/links du graph Courtial (occurrences + cooccurrences).
-- `public/dashboard.html` : visualisation temps réel (liste top 10 + SVG simple), rafraîchie toutes les 4s.
+API minimaliste basée sur Express + SQLite pour mesurer les cooccurrences d'emojis dans un flux conversationnel.
+Aucune analyse textuelle : uniquement des structures sémiotiques calculées sur les emojis transmis.
+
+## Endpoints
+- `POST /api/emojireso` : ajoute un lot d'emojis et retourne les zones `central`, `orbit`, `isolated`, `emerging` ainsi que le graphe (nodes/links).
+- `GET /api/emojireso` : récupère l'état courant du réseau sans écrire.
+- `POST /api/emojireso/reset` : remet à zéro la base SQLite.
 
 ## Démarrage local
 ```bash
 npm install
 npm start
-# http://localhost:3000
+# http://localhost:3000/dashboard
 ```
 
-Tester rapidement :
+## Exemple curl
 ```bash
-curl -X POST http://localhost:3000/api/push \
+curl -X POST http://localhost:3000/api/emojireso \
   -H "Content-Type: application/json" \
-  -d '{"message":"angoisse controle respiration"}'
-
-curl http://localhost:3000/api/graph
+  -d '{"emojis":["😡","📚","🤯"]}'
 ```
 
-## Modèle de données
-Base SQLite `data/resonance.db`, table unique `terms` :
-| champ | type | usage |
-| --- | --- | --- |
-| id | integer | PK |
-| word | text | terme ou 1er élément d'un bigramme |
-| pair | text/null | 2e élément du bigramme (NULL si unigramme) |
-| count | integer | occurrences cumulées |
-| last_seen | integer | timestamp ms |
-| weight | real | pondération cumulée |
+Réinitialiser :
+```bash
+curl -X POST http://localhost:3000/api/emojireso/reset
+```
 
-## OpenAPI
-Schéma statique disponible via `GET /openapi.json` et dans `public/openapi.json`.
+## Dashboard
+- Page `/dashboard` : formulaire d'envoi d'emojis, rendu force-directed (D3.js), listes central/orbit/isolated/emerging, tableau des compteurs.
+- Rafraîchissement auto toutes les 6 s.
 
-## Déploiement Render
-- Build : `npm install`
-- Start : `npm start`
-- Node 18+
+## Stockage SQLite
+Base locale `data/reseau.db` avec les tables :
+- `interactions` (id, session, timestamp)
+- `emoji_count` (emoji, count)
+- `emoji_links` (emoji1, emoji2, cooccurrence_count)
+
+## GPT Action (exemple OpenAPI 3.1)
+```yaml
+openapi: 3.1.0
+info:
+  title: EmojiRéso
+paths:
+  /api/emojireso:
+    post:
+      summary: Ajouter un ensemble d'emojis et obtenir un écho sémiotique
+      operationId: emojiso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emojis:
+                  type: array
+                  items:
+                    type: string
+responses:
+  "200":
+    description: Retour du réseau émoji en croissance
+```

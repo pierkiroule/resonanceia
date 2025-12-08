@@ -3,49 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Écho Résonant — Courtial</title>
+    <title>EmojiRéso•° — Echo sémiotique</title>
     <link rel="stylesheet" href="./style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   </head>
   <body>
     <main class="container">
       <header class="hero">
         <div>
-          <p class="eyebrow">API Écho Résônante</p>
-          <h1>Diagramme stratégique (Courtial/Callon)</h1>
-          <p class="muted">Poussez un texte sur /api/push, observez le graph mis à jour en temps réel.</p>
+          <p class="eyebrow">EmojiRéso•°</p>
+          <h1>Écho sémiotique 100% emojis</h1>
+          <p class="muted">Ajoutez un flux d'emojis, observez les cooccurrences et la densité en direct.</p>
           <div class="cta-row">
-            <code class="pill">POST /api/push</code>
-            <code class="pill ghost">GET /api/graph</code>
+            <code class="pill">POST /api/emojireso</code>
+            <code class="pill ghost">SQLite persisté</code>
           </div>
         </div>
         <div class="panel">
           <p class="panel-title">CURL rapide</p>
-          <pre><code>curl -X POST http://localhost:3000/api/push \ 
-  -H "Content-Type: application/json" \ 
-  -d '{"message":"angoisse controle respiration"}'</code></pre>
+          <pre><code>curl -X POST http://localhost:3000/api/emojireso \
+  -H "Content-Type: application/json" \
+  -d '{"emojis":["😡","📚","🤯"]}'</code></pre>
         </div>
       </header>
+
+      <section class="card inputs">
+        <div>
+          <label for="emojisInput">Liste d'emojis (séparés par espace)</label>
+          <input id="emojisInput" type="text" placeholder="😡 📚 🤯" />
+        </div>
+        <div class="actions">
+          <button id="sendBtn" class="primary">Envoyer</button>
+          <button id="resetBtn" class="ghost">Réinitialiser la base</button>
+          <span id="status" class="muted">—</span>
+        </div>
+      </section>
 
       <section class="split">
         <div class="card">
           <div class="card-head">
-            <h2>Top 10 termes</h2>
+            <h2>Concentricité</h2>
             <span id="updatedAt" class="muted">—</span>
           </div>
-          <ol id="topList" class="top-list"></ol>
+          <div class="tags">
+            <div>
+              <p class="eyebrow">Central</p>
+              <div id="central" class="tag-line"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Orbit</p>
+              <div id="orbit" class="tag-line"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Isolés</p>
+              <div id="isolated" class="tag-line"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Emergent</p>
+              <div id="emerging" class="tag-line"></div>
+            </div>
+          </div>
         </div>
         <div class="card">
           <div class="card-head">
-            <h2>Graph Courtial</h2>
-            <span class="muted">auto-refresh 4s</span>
+            <h2>Forces du réseau</h2>
+            <span class="muted">force-directed</span>
           </div>
-          <div class="svg-shell">
-            <svg id="graph" viewBox="0 0 700 500" role="img" aria-label="Graph Courtial"></svg>
-          </div>
+          <svg id="graph" width="700" height="480"></svg>
         </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Comptes & densités</h2>
+        </div>
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>Emoji</th>
+              <th>Occurrences</th>
+              <th>Centralité</th>
+              <th>Densité locale</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
     </main>
 
-    <script src="./dashboard.js" type="module"></script>
+    <script type="module" src="./dashboard.js"></script>
   </body>
 </html>
